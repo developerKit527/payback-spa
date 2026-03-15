@@ -68,7 +68,10 @@ function App() {
       <div className="min-h-screen bg-gray-50">
         <Header />
         <div className="flex items-center justify-center h-96">
-          <div className="text-red-600 text-lg">Error: {error}</div>
+          <div className="text-center p-8 bg-white rounded-2xl shadow-sm max-w-md">
+            <p className="text-red-600 font-semibold text-lg mb-2">Something went wrong</p>
+            <p className="text-gray-600 text-sm">{error}</p>
+          </div>
         </div>
       </div>
     );

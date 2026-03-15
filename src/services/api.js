@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Create configured Axios instance
 const apiClient = axios.create({
-  baseURL: 'http://localhost:8080/api/v1',
+  baseURL: `${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/api/v1`,
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json'
@@ -13,9 +13,17 @@ const apiClient = axios.create({
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Network error (no response from server)
+    if (!error.response) {
+      return Promise.reject({
+        message: 'Unable to connect to service. Please try again later.',
+        status: null,
+        data: null
+      });
+    }
     // Standardize error structure
     const standardError = {
-      message: error.message,
+      message: error.response?.data?.message || error.message,
       status: error.response?.status,
       data: error.response?.data
     };
