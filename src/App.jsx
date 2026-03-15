@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { getWallet, getMerchants, trackMerchantClick } from './services/api';
 import Header from './components/Header';
-import WalletCard from './components/WalletCard';
+import WalletCard, { WalletCardSkeleton } from './components/WalletCard';
 import MerchantGrid from './components/MerchantGrid';
 import TransactionList from './components/TransactionList';
 import { Wallet, Clock, CheckCircle } from 'lucide-react';
@@ -56,9 +56,16 @@ function App() {
     return (
       <div className="min-h-screen bg-gray-50">
         <Header />
-        <div className="flex items-center justify-center h-96">
-          <div className="text-gray-900 text-lg">Loading...</div>
-        </div>
+        <main className="max-w-7xl mx-auto px-4 py-8">
+          <div className="h-10 w-48 bg-gray-200 rounded mb-8 animate-pulse" />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+            <WalletCardSkeleton />
+            <WalletCardSkeleton />
+            <WalletCardSkeleton />
+          </div>
+          <div className="h-8 w-64 bg-gray-200 rounded mb-6 animate-pulse" />
+          <MerchantGrid merchants={[]} loading={true} onMerchantActivate={() => {}} />
+        </main>
       </div>
     );
   }
@@ -94,6 +101,7 @@ function App() {
               value={wallet.totalEarned}
               color="text-success"
               bgColor="bg-emerald-50"
+              glass={true}
             />
             <WalletCard
               icon={Clock}
@@ -101,6 +109,7 @@ function App() {
               value={wallet.pending}
               color="text-warning"
               bgColor="bg-amber-50"
+              glass={true}
             />
             <WalletCard
               icon={Wallet}

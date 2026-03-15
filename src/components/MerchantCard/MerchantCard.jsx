@@ -1,17 +1,35 @@
 import React, { useState } from 'react';
 import PropTypes from 'prop-types';
 import { ExternalLink } from 'lucide-react';
+import styles from './MerchantCard.module.css';
+
+// Deterministic color palette for logo fallbacks
+const FALLBACK_COLORS = [
+  '#4F46E5', '#C026D3', '#10B981', '#F59E0B',
+  '#EF4444', '#3B82F6', '#8B5CF6', '#EC4899',
+];
+
+function getFallbackColor(name) {
+  const index = (name?.charCodeAt(0) || 0) % FALLBACK_COLORS.length;
+  return FALLBACK_COLORS[index];
+}
 
 /**
- * MerchantCard - Displays a merchant with logo, cashback rate, and action button
- * @param {Object} props
- * @param {Object} props.merchant - Merchant data object
- * @param {number} props.merchant.id - Merchant ID
- * @param {string} props.merchant.name - Merchant name
- * @param {string} props.merchant.logoUrl - URL to merchant logo
- * @param {number} props.merchant.cashbackPercentage - Cashback rate (e.g., 10 for 10%)
- * @param {string} props.merchant.manualTrackingUrl - Affiliate tracking URL
- * @param {Function} props.onActivate - Callback when Shop & Earn is clicked
+ * MerchantCardSkeleton - Shimmer placeholder while merchants load
+ */
+export function MerchantCardSkeleton() {
+  return (
+    <div className="bg-white rounded-2xl shadow-sm p-6 flex flex-col items-center" data-testid="merchant-card-skeleton">
+      <div className={`${styles.shimmer} w-24 h-24 rounded-full mb-4`} />
+      <div className={`${styles.shimmer} h-5 w-32 rounded mb-4`} />
+      <div className={`${styles.shimmer} h-6 w-24 rounded-full mb-4`} />
+      <div className={`${styles.shimmer} h-12 w-full rounded-lg`} />
+    </div>
+  );
+}
+
+/**
+ * MerchantCard - Displays a merchant with logo (or fallback), cashback badge, and action button
  */
 function MerchantCard({ merchant, onActivate }) {
   const [isActivating, setIsActivating] = useState(false);
@@ -19,7 +37,6 @@ function MerchantCard({ merchant, onActivate }) {
 
   const handleClick = async () => {
     if (isActivating) return;
-    
     setIsActivating(true);
     try {
       await onActivate(merchant.id);
@@ -28,35 +45,43 @@ function MerchantCard({ merchant, onActivate }) {
     }
   };
 
-  const handleImageError = () => {
-    setImageError(true);
-  };
-
-  // Fallback placeholder image
-  const placeholderImage = `https://via.placeholder.com/150/4F46E5/FFFFFF?text=${encodeURIComponent(merchant.name)}`;
+  const fallbackColor = getFallbackColor(merchant.name);
+  const firstLetter = merchant.name?.charAt(0).toUpperCase() || '?';
+  const showFallback = imageError || !merchant.logoUrl;
 
   return (
     <div
       className="bg-white rounded-2xl shadow-sm p-6 hover:shadow-md transition-shadow flex flex-col items-center relative"
       data-testid="merchant-card"
     >
-      {/* Cashback Badge - Top Right */}
+      {/* Cashback Badge */}
       <div
-        className="absolute top-4 right-4 bg-success/10 text-success px-3 py-1 rounded-full text-xs font-semibold"
+        className="absolute top-4 right-4 bg-emerald-50 text-success px-3 py-1 rounded-full text-xs font-semibold"
         data-testid="cashback-badge-corner"
       >
         {merchant.cashbackPercentage}% Cashback
       </div>
 
-      {/* Merchant Logo */}
-      <div className="w-24 h-24 mb-4 flex items-center justify-center">
-        <img
-          src={imageError ? placeholderImage : merchant.logoUrl}
-          alt={`${merchant.name} logo`}
-          className="max-w-full max-h-full object-contain"
-          onError={handleImageError}
-          data-testid="merchant-logo"
-        />
+      {/* Logo or Fallback */}
+      <div className="w-24 h-24 mb-4 flex items-center justify-center" data-testid="merchant-logo-container">
+        {showFallback ? (
+          <div
+            className={styles.logoFallback}
+            style={{ backgroundColor: fallbackColor }}
+            data-testid="merchant-logo-fallback"
+            aria-label={`${merchant.name} logo`}
+          >
+            {firstLetter}
+          </div>
+        ) : (
+          <img
+            src={merchant.logoUrl}
+            alt={`${merchant.name} logo`}
+            className="max-w-full max-h-full object-contain"
+            onError={() => setImageError(true)}
+            data-testid="merchant-logo"
+          />
+        )}
       </div>
 
       {/* Merchant Name */}
@@ -71,7 +96,7 @@ function MerchantCard({ merchant, onActivate }) {
       <button
         onClick={handleClick}
         disabled={isActivating}
-        className="w-full bg-fuchsia-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-fuchsia-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+        className="w-full bg-primary text-white py-3 px-6 rounded-lg font-semibold hover:bg-brand disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
         data-testid="shop-earn-button"
       >
         {isActivating ? (
@@ -91,7 +116,7 @@ MerchantCard.propTypes = {
   merchant: PropTypes.shape({
     id: PropTypes.number.isRequired,
     name: PropTypes.string.isRequired,
-    logoUrl: PropTypes.string.isRequired,
+    logoUrl: PropTypes.string,
     cashbackPercentage: PropTypes.number.isRequired,
     manualTrackingUrl: PropTypes.string.isRequired,
   }).isRequired,
