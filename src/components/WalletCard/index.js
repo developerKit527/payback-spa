@@ -1,1 +1,1 @@
-export { default } from './WalletCard';
+export { default, WalletCardSkeleton } from './WalletCard';

@@ -1,1 +1,1 @@
-export { default } from './MerchantCard';
+export { default, MerchantCardSkeleton } from './MerchantCard';
