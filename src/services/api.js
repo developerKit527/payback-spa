@@ -58,7 +58,16 @@ export const getMerchants = async () => {
  * @returns {Promise} Updated merchant data
  */
 export const trackMerchantClick = async (merchantId) => {
-  const response = await apiClient.post(`/merchants/${merchantId}/click`);
+  const response = await apiClient.get(`/merchants/${merchantId}/click`);
+  return response.data;
+};
+
+/**
+ * Health check — used for cold-start detection
+ * @returns {Promise} Health status
+ */
+export const getHealth = async () => {
+  const response = await apiClient.get('/health');
   return response.data;
 };
 

@@ -78,11 +78,11 @@ describe('Header', () => {
       expect(header).toHaveClass('top-0');
     });
 
-    it('should have indigo-700 background', () => {
+    it('should have dark navy background', () => {
       const { container } = render(<Header />);
       
       const header = container.querySelector('header');
-      expect(header).toHaveClass('bg-indigo-700');
+      expect(header).toHaveStyle({ backgroundColor: '#1A1A2E' });
       expect(header).toHaveClass('text-white');
     });
 

@@ -1,0 +1,43 @@
+/* ── Floating badge animation ───────────────────────────────── */
+@keyframes float {
+  0%   { transform: translateY(0px); }
+  50%  { transform: translateY(-12px); }
+  100% { transform: translateY(0px); }
+}
+
+.hero {
+  background: linear-gradient(135deg, #1A1A2E 0%, #FF4D00 100%);
+  position: relative;
+  overflow: hidden;
+  min-height: 420px;
+}
+
+/* Base badge style — all badges are absolutely positioned */
+.badge {
+  position: absolute;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.badge1 {
+  position: absolute;
+  top: 15%;
+  right: 18%;
+  animation: float 3s ease-in-out infinite;
+}
+
+.badge2 {
+  position: absolute;
+  bottom: 30%;
+  right: 5%;
+  animation: float 3s ease-in-out infinite;
+  animation-delay: 1s;
+}
+
+.badge3 {
+  position: absolute;
+  bottom: 15%;
+  right: 25%;
+  animation: float 3s ease-in-out infinite;
+  animation-delay: 2s;
+}

@@ -67,7 +67,7 @@ This implementation plan breaks down the Payback SPA Frontend into discrete, inc
 - [x] 5. Implement MerchantCard component
   - [x] 5.1 Create src/components/MerchantCard.jsx
     - Display merchant logo (centered, max height 80px)
-    - Display cashback percentage badge (Indigo background, white text)
+    - Display cashback rate badge using `cashbackRate` field (Indigo background, white text)
     - Display "Activate Cashback" button (full width, Indigo-600)
     - Implement loading state during activation (disable button, show spinner)
     - Handle button click: call onActivate prop with merchant ID
@@ -161,7 +161,7 @@ This implementation plan breaks down the Payback SPA Frontend into discrete, inc
   - [ ]* 9.3 Write property test for click tracking API call
     - **Property 7: Click Tracking API Call**
     - **Validates: Requirements 8.1**
-    - Test that clicking activation button sends POST to correct endpoint with merchant ID
+    - Test that clicking "Shop Now →" button sends GET to correct endpoint with merchant ID
 
   - [ ]* 9.4 Write property test for tracking URL navigation
     - **Property 8: Tracking URL Navigation**
@@ -192,7 +192,7 @@ This implementation plan breaks down the Payback SPA Frontend into discrete, inc
   - [ ] 10.2 Create toast notification system
     - Implement simple toast component for error notifications
     - Display toasts for network errors, timeouts, and server errors
-    - Auto-dismiss toasts after 5 seconds
+    - Auto-dismiss toasts after 3 seconds (per REQ-019.3)
     - _Requirements: 11.2, 11.3_
 
   - [ ]* 10.3 Write property test for error notification display
@@ -292,3 +292,153 @@ This implementation plan breaks down the Payback SPA Frontend into discrete, inc
 - All work must be done within the payback-spa directory
 - Backend API must be running at http://localhost:8080/api/v1 for integration testing
 - Checkpoints ensure incremental validation and provide opportunities for user feedback
+
+---
+
+## Tasks: Requirements 13–22
+
+- [x] 15. Design system upgrade
+  - [x] 15.1 Update color tokens and fonts
+    - Add CSS custom properties (`--color-primary`, `--color-secondary`, `--color-accent`) to `index.css`
+    - Update `tailwind.config.js` to map `primary` → `#FF4D00`, `secondary` → `#1A1A2E`, `accent` → `#FFD700`
+    - Add Google Fonts `<link>` for Sora and DM Sans in `index.html`
+    - Apply `font-family` tokens in `index.css` for body (DM Sans) and headings (Sora)
+    - _Requirements: 13.1, 13.2, 13.3, 13.4, 13.5_
+
+- [x] 16. Implement HeroSection component
+  - [x] 16.1 Create `src/components/HeroSection/` (JSX, module.css, test, stories, index.js)
+    - Diagonal gradient background `#1A1A2E → #FF4D00`
+    - Headline "Shop Smart. Earn Real Cashback." in Sora font
+    - Three floating cashback badges (₹127, ₹250, ₹89) with CSS keyframe `float` animation in module.css
+    - Stats bar: "500+ Stores | ₹2Cr+ Cashback Paid | 1L+ Happy Users"
+    - Two CTAs: "Explore Stores →" (scroll to `#merchant-grid`) and "How It Works" (scroll to `#how-it-works`)
+    - _Requirements: 14.1, 14.2, 14.3, 14.4, 14.5, 14.6_
+
+  - [ ]* 16.2 Write unit tests for HeroSection
+    - Test headline text renders
+    - Test all three floating badges render
+    - Test stats bar text renders
+    - Test CTA buttons exist
+
+- [x] 17. Implement CategoryPills component
+  - [x] 17.1 Create `src/components/CategoryPills/` (JSX, module.css, test, stories, index.js)
+    - Horizontally scrollable pill row with hidden scrollbar (CSS Module)
+    - Static category list: Fashion, Electronics, Home, Beauty, Travel, Food, Health, Education
+    - Active pill: `bg-primary` (#FF4D00) with white text
+    - Emit `onCategoryChange(category | null)` to parent
+    - _Requirements: 15.1, 15.2, 15.4, 15.5_
+
+  - [x] 17.2 Wire category filter in App.jsx
+    - Add `activeCategory` state to App.jsx
+    - Create `src/utils/merchantCategories.js` with static map:
+      ```js
+      export const MERCHANT_CATEGORIES = {
+        'Flipkart': 'Fashion', 'Myntra': 'Fashion', 'Ajio': 'Fashion',
+        'Adidas': 'Fashion', 'Puma India': 'Fashion',
+        'Amazon India': 'Electronics', 'Samsung': 'Electronics', 'Dell': 'Electronics',
+        'Nykaa': 'Beauty', 'Mamaearth': 'Beauty',
+      };
+      ```
+    - Filter: `merchants.filter(m => MERCHANT_CATEGORIES[m.name] === activeCategory)`
+    - When no category selected, show all merchants
+    - Pass `onCategoryChange` to `CategoryPills`
+    - _Requirements: 15.3, 15.6_
+
+  - [ ]* 17.3 Write property test for category filter completeness
+    - **Property 16: Category Filter Completeness**
+    - **Validates: Req 15.3, 15.6**
+    - For any active category, rendered card count equals matching merchant count
+
+- [x] 18. Enhance MerchantCard component
+  - [x] 18.1 Update `MerchantCard.jsx`
+    - Change cashback badge text to `"Upto {cashbackRate}% Cashback"` in orange pill (field is `cashbackRate`, not `cashbackPercentage`)
+    - Add offer tag from static map in `src/utils/offerTags.js` (teal chip; hidden if no entry)
+    - Add hover lift: `translateY(-4px)` + `shadow-xl` transition (CSS Module)
+    - Add gold ribbon badge using `FEATURED_IDS` set from `src/utils/offerTags.js`: `export const FEATURED_IDS = [1, 5, 6]`; show ribbon when `FEATURED_IDS.includes(merchant.id)` — do not expect `featured` field from API
+    - Change button text to `"Shop Now →"`; hover fills `bg-primary`
+    - Update click handler: call `trackMerchantClick(id)` (GET /api/v1/merchants/{id}/click) → open URL returned in response body; if response URL is null, show toast "Merchant link not available yet."
+    - _Requirements: 16.1, 16.2, 16.3, 16.4, 16.5, 16.6_
+
+  - [ ]* 18.2 Update MerchantCard tests
+    - Test cashback badge shows "Upto X% Cashback" (using `cashbackRate` field)
+    - Test offer tag renders when static map has entry
+    - Test offer tag hidden when no entry
+    - Test featured ribbon renders when `merchant.id` is in `FEATURED_IDS`
+
+- [x] 19. Implement HowItWorks section
+  - [x] 19.1 Create `src/components/HowItWorks/` (JSX, module.css, test, stories, index.js)
+    - Section with `id="how-it-works"`
+    - Three steps: "Find a Store", "Click & Shop", "Earn Cashback" with lucide icons in colored circles
+    - Horizontal on desktop, vertical stack on mobile
+    - `IntersectionObserver` adds `is-visible` class; CSS Module `fadeInUp` keyframe with staggered delays
+    - _Requirements: 17.1, 17.2, 17.3, 17.4, 17.5_
+
+  - [ ]* 19.2 Write unit tests for HowItWorks
+    - Test all three step titles render
+    - Test section has correct `id` attribute
+
+- [x] 20. Enhance WalletCard to unified dashboard (Req 18)
+  - [x] 20.1 Refactor `WalletCard.jsx` to unified single-card layout
+    - Gradient background `#1A1A2E → #2D4A6E`
+    - Display Available for Payout (primary), Total Earned and Pending below
+    - Count-up animation via `requestAnimationFrame` in `useEffect`
+    - Skeleton loader while fetching
+    - Error state: `<WifiOff />` icon + "Could not load balance"
+    - _Requirements: 18.1, 18.2, 18.3, 18.4, 18.5, 18.6_
+
+  - [ ]* 20.2 Write property test for count-up accuracy
+    - **Property 18: Count-Up Accuracy**
+    - **Validates: Req 18.3**
+    - For any wallet `available` value, animation ends at exact value
+
+- [x] 21. Implement Toast notification system (Req 19)
+  - [x] 21.1 Create `src/context/ToastContext.jsx` and `src/hooks/useToast.js`
+    - `ToastContext` holds toast list and `showToast(message, variant)` function
+    - Auto-dismiss after 3 seconds via `setTimeout`
+    - _Requirements: 19.1, 19.3_
+
+  - [x] 21.2 Create `src/components/Toast/` (JSX, module.css, index.js)
+    - Fixed bottom-right, `z-index: 50`
+    - Variants: success (green), error (red), info (blue)
+    - Slide-in animation keyframe in `Toast.module.css`
+    - _Requirements: 19.2, 19.4, 19.5_
+
+  - [x] 21.3 Wrap App in `ToastProvider`; replace all `alert()` calls with `showToast`
+    - _Requirements: 19.6_
+
+  - [ ]* 21.4 Write property test for toast trigger
+    - **Property 15: Toast Trigger from Any Component**
+    - **Validates: Req 19.1, 19.6**
+
+- [x] 22. Implement MobileBottomNav (Req 20)
+  - [x] 22.1 Create `src/components/MobileBottomNav/` (JSX, module.css, index.js)
+    - Fixed bottom bar, `block md:hidden`
+    - Tabs: Home, Stores, Wallet, Profile (lucide icons)
+    - Active tab: `text-primary` + `border-t-2 border-primary`
+    - Profile tab: non-functional placeholder
+    - _Requirements: 20.1, 20.2, 20.3, 20.4, 20.5_
+
+- [x] 23. Implement Render cold start handling (Req 21)
+  - [x] 23.1 Add health-poll logic to App.jsx `useEffect`
+    - NOTE: `getHealth()` already exists in `src/services/api.js` — do not add a duplicate
+    - Poll `getHealth()` (already exported from api.js) before `fetchData()`
+    - Show "Waking up server..." banner if no response within 3s
+    - Hide banner and proceed on success
+    - _Requirements: 21.1, 21.2, 21.3, 21.4_
+
+  - [ ]* 23.3 Write property test for health poll progression
+    - **Property 17: Health Poll Progression**
+    - **Validates: Req 21.1, 21.3, 21.4**
+
+- [x] 24. Wire all new components into App.jsx
+  - Import and render: `HeroSection`, `CategoryPills`, `HowItWorks`, `MobileBottomNav`
+  - Add `id="merchant-grid"` to the merchant section wrapper
+  - Ensure `ToastProvider` wraps the full app in `main.jsx`
+  - _Requirements: 14.6, 15.3, 17.1, 19.6, 20.1_
+
+- [x] 25. Final checkpoint — Requirements 13–22
+  - Verify all new components render without errors
+  - Run `npm test -- --run` and confirm all tests pass
+  - Verify responsive behavior: mobile bottom nav visible, desktop hidden
+  - Verify primary color is #FF4D00 throughout (no Indigo-600 remnants)
+  - Ask the user if questions arise before closing

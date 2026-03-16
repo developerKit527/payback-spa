@@ -161,3 +161,126 @@ The Payback SPA Frontend is a modern React-based single-page application that pr
 4. THE Frontend_Application SHALL use Gray-900 (#111827) for main headings and body text
 5. THE Frontend_Application SHALL use Gray-50 (#F9FAFB) for the application background
 6. THE Frontend_Application SHALL maintain consistent spacing and alignment throughout all components
+
+### Requirement 13: Design System Upgrade
+
+**User Story:** As a user, I want a modern, energetic interface, so that the app feels trustworthy and engaging.
+
+#### Acceptance Criteria
+
+1. THE Frontend_Application SHALL replace the Indigo-600 primary color with #FF4D00 (orange-red) as the resolved value for all references to "Primary brand color" in existing requirements
+2. THE Frontend_Application SHALL add secondary color #1A1A2E (deep navy) and accent color #FFD700 (gold) to the design system
+3. THE Frontend_Application SHALL load Sora (headings) and DM Sans (body) fonts from Google Fonts via index.html
+4. THE Frontend_Application SHALL define all color tokens as CSS custom properties in index.css
+5. THE Frontend_Application SHALL maintain Tailwind v4 + CSS Modules as the only styling tools
+
+### Requirement 14: Hero Section
+
+**User Story:** As a visitor, I want an engaging hero section, so that I immediately understand what Payback offers.
+
+#### Acceptance Criteria
+
+1. THE Frontend_Application SHALL display a full-width hero section above the merchant grid
+2. THE HeroSection SHALL display headline "Shop Smart. Earn Real Cashback." in Sora font
+3. THE HeroSection SHALL display a diagonal gradient background from #1A1A2E to #FF4D00
+4. THE HeroSection SHALL display three floating cashback badges (₹127, ₹250, ₹89) using CSS keyframe float animation defined in a CSS Module
+5. THE HeroSection SHALL display a stats bar: "500+ Stores | ₹2Cr+ Cashback Paid | 1L+ Happy Users"
+6. THE HeroSection SHALL display two CTAs: "Explore Stores →" (scrolls to merchant grid) and "How It Works" (scrolls to how-it-works section)
+
+### Requirement 15: Category Filter
+
+**User Story:** As a user, I want to filter merchants by category, so that I can find relevant stores faster.
+
+#### Acceptance Criteria
+
+1. THE Frontend_Application SHALL display a horizontally scrollable category pill row above the merchant grid
+2. THE CategoryPills SHALL include: Fashion, Electronics, Home, Beauty, Travel, Food, Health, Education
+3. WHEN a User clicks a category pill, THE Merchant_Grid SHALL filter to show only merchants in that category
+4. THE active category pill SHALL use bg-primary (#FF4D00) with white text
+5. THE CategoryPills scrollbar SHALL be hidden using a CSS Module utility class
+6. WHEN no category is selected, THE Merchant_Grid SHALL display all merchants
+
+### Requirement 16: Enhanced Merchant Card
+
+**User Story:** As a user, I want richer merchant cards, so that I can see offers and cashback rates at a glance.
+
+#### Acceptance Criteria
+
+1. THE MerchantCard SHALL display cashback rate as "Upto {cashbackRate}% Cashback" in an orange pill badge
+2. THE MerchantCard SHALL display an offer tag (e.g. "Sale Live", "Trending", "B1G1") sourced from a hardcoded static map in the frontend keyed by merchant id or name; if no match exists, no tag is shown
+3. THE MerchantCard SHALL lift on hover using translateY(-4px) with shadow-xl transition
+4. THE MerchantCard SHALL display a gold ribbon badge for featured merchants using a CSS Module
+5. THE MerchantCard "Shop Now →" button SHALL fill bg-primary (#FF4D00) on hover with smooth transition
+6. WHEN a User clicks a MerchantCard, THE Frontend_Application SHALL call GET /api/v1/merchants/{id}/click then open the returned URL in a new tab
+
+### Requirement 17: How It Works Section
+
+**User Story:** As a new visitor, I want to understand how Payback works, so that I feel confident using it.
+
+#### Acceptance Criteria
+
+1. THE Frontend_Application SHALL display a "How It Works" section with id="how-it-works" below the merchant grid
+2. THE HowItWorks section SHALL display 3 steps: "Find a Store", "Click & Shop", "Earn Cashback"
+3. THE HowItWorks steps SHALL display horizontally on desktop and vertically stacked on mobile
+4. THE HowItWorks steps SHALL use lucide-react icons inside colored circles
+5. WHEN the section enters the viewport, THE HowItWorks steps SHALL animate in using IntersectionObserver fade-in-up
+
+### Requirement 18: Enhanced Wallet Dashboard
+
+**User Story:** As a user, I want a more prominent wallet display, so that my balance feels like a financial asset.
+
+#### Acceptance Criteria
+
+1. THE WalletCard SHALL be a single unified card replacing the previous 3-card layout, displaying Total Earned, Pending, and Available for Payout together
+2. THE WalletCard SHALL display a gradient card background from #1A1A2E to #2D4A6E
+3. THE WalletCard balance number SHALL animate with a count-up effect on load using vanilla JS
+4. THE WalletCard SHALL display pending amount in amber below the main balance
+5. THE WalletCard SHALL show a skeleton loader while GET /api/v1/wallet/1 is fetching
+6. THE WalletCard SHALL show a lucide WifiOff icon with "Could not load balance" on fetch error
+
+### Requirement 19: Toast Notification System
+
+**User Story:** As a user, I want non-intrusive feedback for actions, so that I know when things succeed or fail.
+
+#### Acceptance Criteria
+
+1. THE Frontend_Application SHALL implement a ToastContext and useToast hook
+2. THE Toast SHALL appear fixed at bottom-right with z-index 50
+3. THE Toast SHALL auto-dismiss after 3 seconds
+4. THE Toast SHALL support variants: success (green), error (red), info (blue)
+5. THE Toast slide-in animation SHALL be defined in a CSS Module keyframe
+6. ANY component SHALL be able to trigger a toast via the useToast hook
+
+### Requirement 20: Mobile Navigation
+
+**User Story:** As a mobile user, I want a bottom navigation bar, so that key sections are always reachable with my thumb.
+
+#### Acceptance Criteria
+
+1. THE Frontend_Application SHALL display a fixed bottom navigation bar on mobile only (hidden at md breakpoint)
+2. THE MobileBottomNav SHALL display 4 tabs: Home, Stores, Wallet, Profile using lucide-react icons
+3. THE active tab SHALL display text-primary (#FF4D00) with a top border accent line
+4. THE MobileBottomNav SHALL have bg-white border-t shadow-lg styling
+5. THE Profile tab SHALL be a non-functional placeholder with no route or page; clicking it does nothing
+
+### Requirement 21: Render Cold Start Handling
+
+**User Story:** As a user, I want feedback when the backend is waking up, so that I don't think the app is broken.
+
+#### Acceptance Criteria
+
+1. WHEN GET /api/v1/health takes longer than 3 seconds to respond, THE Frontend_Application SHALL display a "Waking up server..." message
+2. THE Frontend_Application SHALL poll /api/v1/health on startup before fetching merchants and wallet data
+3. WHEN the health check succeeds, THE Frontend_Application SHALL proceed with normal data fetching
+4. THE "Waking up server..." message SHALL disappear automatically once the health check succeeds
+
+### Requirement 22: API Service Layer
+
+**User Story:** As a developer, I want all API calls centralized, so that endpoint changes only require updating one file.
+
+#### Acceptance Criteria
+
+1. THE api.js service SHALL export named functions: getMerchants, trackMerchantClick, getWallet, getHealth
+2. ALL components SHALL import from src/services/api.js — no raw fetch or axios calls inside components
+3. THE api.js SHALL read base URL from import.meta.env.VITE_API_URL with fallback to http://localhost:8080
+4. THE api.js SHALL use the existing configured Axios instance (no second Axios instance)

@@ -43,7 +43,7 @@ MerchantGrid.propTypes = {
     PropTypes.shape({
       id: PropTypes.number.isRequired,
       name: PropTypes.string.isRequired,
-      cashbackPercentage: PropTypes.number.isRequired,
+      cashbackRate: PropTypes.number.isRequired,
       manualTrackingUrl: PropTypes.string.isRequired,
     })
   ),

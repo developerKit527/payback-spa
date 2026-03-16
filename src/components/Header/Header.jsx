@@ -11,7 +11,7 @@ import { formatCurrency } from '../../utils/formatters';
  */
 function Header({ wallet = null, isAuthenticated = false }) {
   return (
-    <header className="w-full sticky top-0 bg-indigo-700 text-white shadow-md z-50">
+    <header className="w-full sticky top-0 text-white shadow-md z-50" style={{ backgroundColor: '#1A1A2E' }}>
       <div className="max-w-7xl mx-auto flex items-center justify-between h-16 px-6">
         {/* Logo */}
         <div className="flex-shrink-0">

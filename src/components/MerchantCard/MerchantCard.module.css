@@ -22,3 +22,28 @@
   color: #fff;
   flex-shrink: 0;
 }
+
+/* Hover lift effect */
+.card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12);
+}
+
+/* Gold featured ribbon — top-left corner */
+.ribbon {
+  position: absolute;
+  top: 0;
+  left: 0;
+  background: #FFD700;
+  color: #1A1A2E;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 3px 10px 3px 6px;
+  border-radius: 0 0 8px 0;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}

@@ -48,7 +48,7 @@ The application follows a traditional client-server architecture with clear sepa
 │                    /api/v1/*                                 │
 │  - GET  /merchants                                           │
 │  - GET  /wallet/:id                                          │
-│  - POST /merchants/:id/click                                 │
+│  - GET  /merchants/:id/click                                 │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -350,9 +350,9 @@ export const getMerchants = async () => {
   return response.data;
 };
 
-// Track merchant click
+// Track merchant click — GET endpoint, returns redirect URL in response body
 export const trackMerchantClick = async (merchantId) => {
-  const response = await apiClient.post(`/merchants/${merchantId}/click`);
+  const response = await apiClient.get(`/merchants/${merchantId}/click`);
   return response.data;
 };
 ```
@@ -389,7 +389,7 @@ export const trackMerchantClick = async (merchantId) => {
   id: number,                    // Unique merchant identifier
   name: string,                  // Merchant display name
   logoUrl: string,               // URL to merchant logo image
-  cashbackPercentage: number,    // Cashback rate (e.g., 10 for 10%)
+  cashbackRate: number,          // Cashback rate (e.g., 10 for 10%)
   manualTrackingUrl: string,     // Affiliate tracking URL
   clickCount: number             // Number of times clicked (for sorting)
 }
@@ -529,7 +529,7 @@ The following properties represent the unique, non-redundant testable behaviors 
 
 ### Property 7: Click Tracking API Call
 
-*For any* merchant card, when the "Activate Cashback" button is clicked, a POST request should be sent to `/api/v1/merchants/{id}/click` with the correct merchant ID.
+*For any* merchant card, when the "Shop Now →" button is clicked, a GET request should be sent to `/api/v1/merchants/{id}/click` with the correct merchant ID, and the URL returned in the response body should be opened in a new tab. If the response URL is null, a toast error "Merchant link not available yet." should be shown.
 
 **Validates: Requirements 8.1**
 
@@ -537,7 +537,7 @@ The following properties represent the unique, non-redundant testable behaviors 
 
 ### Property 8: Tracking URL Navigation
 
-*For any* merchant with a manualTrackingUrl, when click tracking succeeds, the application should open that URL in a new browser tab.
+*For any* merchant, when click tracking succeeds and the response contains a non-null URL, the application should open that URL in a new browser tab.
 
 **Validates: Requirements 8.2**
 
@@ -921,3 +921,270 @@ npm run test:coverage # Generate coverage report
 3. **Performance Testing**: Measure and track component render times
 4. **Accessibility Testing**: Automated a11y checks with axe-core
 
+
+---
+
+## Design Additions: Requirements 13–22
+
+### Design System Upgrade (Req 13)
+
+#### Color Tokens
+
+All colors are defined as CSS custom properties in `index.css` and referenced via Tailwind config:
+
+```css
+:root {
+  --color-primary:   #FF4D00;  /* orange-red — replaces Indigo-600 everywhere */
+  --color-secondary: #1A1A2E;  /* deep navy */
+  --color-accent:    #FFD700;  /* gold */
+  --color-success:   #10B981;  /* Emerald-500 */
+  --color-warning:   #F59E0B;  /* Amber-500 */
+}
+```
+
+`tailwind.config.js` maps these tokens so Tailwind utilities like `bg-primary`, `text-secondary`, `border-accent` work throughout the app.
+
+#### Typography
+
+Loaded via `<link>` in `index.html` (Google Fonts):
+- **Sora** — headings (`font-heading`)
+- **DM Sans** — body text (`font-body`)
+
+`index.css` applies `font-family: 'DM Sans', sans-serif` to `body` and `font-family: 'Sora', sans-serif` to heading elements.
+
+---
+
+### Hero Section (Req 14)
+
+**Component**: `src/components/HeroSection/HeroSection.jsx`
+
+**Layout**:
+```
+┌──────────────────────────────────────────────────────────┐
+│  Diagonal gradient: #1A1A2E → #FF4D00                    │
+│                                                          │
+│  "Shop Smart. Earn Real Cashback."  [Sora, white]        │
+│                                                          │
+│  [Explore Stores →]   [How It Works]                     │
+│                                                          │
+│  ── Stats bar: 500+ Stores | ₹2Cr+ Paid | 1L+ Users ──  │
+│                                                          │
+│  Floating badges: ₹127  ₹250  ₹89  (CSS keyframe float) │
+└──────────────────────────────────────────────────────────┘
+```
+
+**Floating badges**: CSS `@keyframes float` defined in `HeroSection.module.css`, each badge has a different `animation-delay` for staggered motion.
+
+**CTAs**:
+- "Explore Stores →" → `document.getElementById('merchant-grid').scrollIntoView()`
+- "How It Works" → `document.getElementById('how-it-works').scrollIntoView()`
+
+---
+
+### Category Filter (Req 15)
+
+**Component**: `src/components/CategoryPills/CategoryPills.jsx`
+
+**State** (lifted to App.jsx): `activeCategory: string | null`
+
+**Categories** (static): `['Fashion', 'Electronics', 'Home', 'Beauty', 'Travel', 'Food', 'Health', 'Education']`
+
+**Filtering logic** (in App.jsx):
+```javascript
+const filteredMerchants = activeCategory
+  ? merchants.filter(m => m.category === activeCategory)
+  : merchants;
+```
+
+**Scrollbar hiding**: `CategoryPills.module.css` utility class:
+```css
+.scrollContainer {
+  overflow-x: auto;
+  scrollbar-width: none; /* Firefox */
+}
+.scrollContainer::-webkit-scrollbar { display: none; }
+```
+
+---
+
+### Enhanced Merchant Card (Req 16)
+
+**Changes to existing `MerchantCard.jsx`**:
+
+- Cashback badge text changes to `"Upto {cashbackRate}% Cashback"` in orange pill (field is `cashbackRate`, not `cashbackPercentage`)
+- Offer tag sourced from a static map in `src/utils/offerTags.js`:
+  ```javascript
+  export const OFFER_TAGS = {
+    1: 'Sale Live',
+    2: 'Trending',
+    // ... keyed by merchant id
+  };
+  ```
+  Rendered as a teal chip; omitted if no entry exists.
+- Hover lift: CSS Module class with `transform: translateY(-4px); box-shadow: var(--shadow-xl);`
+- Gold ribbon badge: `FEATURED_IDS.includes(merchant.id)` checked against `export const FEATURED_IDS = [1, 5, 6]` in `src/utils/offerTags.js` — no `featured` field expected from API
+- Button text changes to `"Shop Now →"`; hover fills `bg-primary`
+- Click flow: `GET /api/v1/merchants/{id}/click` → open URL returned in response body; if response URL is null, show toast "Merchant link not available yet." Do not use `manualTrackingUrl` (it is null on all merchants).
+
+---
+
+### How It Works Section (Req 17)
+
+**Component**: `src/components/HowItWorks/HowItWorks.jsx`
+
+**Layout**:
+```
+id="how-it-works"
+┌──────────┐  ┌──────────┐  ┌──────────┐
+│  Search  │  │  Click   │  │  Earn    │
+│  icon    │  │  icon    │  │  icon    │
+│ Find a   │  │ Click &  │  │  Earn    │
+│  Store   │  │  Shop    │  │ Cashback │
+└──────────┘  └──────────┘  └──────────┘
+  (horizontal on desktop, vertical stack on mobile)
+```
+
+**Animation**: `IntersectionObserver` adds a `is-visible` class when the section enters the viewport. `HowItWorks.module.css` defines:
+```css
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.step { opacity: 0; }
+.step.is-visible { animation: fadeInUp 0.5s ease forwards; }
+```
+Each step has a staggered `animation-delay`.
+
+---
+
+### Enhanced Wallet Dashboard (Req 18)
+
+**Replaces** the 3-card layout with a **single unified `WalletCard`**.
+
+**Layout**:
+```
+┌─────────────────────────────────────────┐
+│  gradient: #1A1A2E → #2D4A6E            │
+│                                         │
+│  Available for Payout                   │
+│  ₹ [count-up animated number]           │
+│                                         │
+│  Total Earned: ₹xxx   Pending: ₹xxx     │
+└─────────────────────────────────────────┘
+```
+
+**Count-up**: vanilla JS `requestAnimationFrame` loop in a `useEffect`, animating from 0 to the target value over ~1 second.
+
+**Error state**: renders `<WifiOff />` icon (lucide) + "Could not load balance" text.
+
+**Skeleton**: single card-shaped shimmer while loading.
+
+---
+
+### Toast Notification System (Req 19)
+
+**Files**:
+- `src/context/ToastContext.jsx` — provides `ToastContext`
+- `src/hooks/useToast.js` — `const { showToast } = useToast()`
+- `src/components/Toast/Toast.jsx` — renders the toast UI
+
+**Context shape**:
+```javascript
+{
+  showToast: (message: string, variant: 'success' | 'error' | 'info') => void
+}
+```
+
+**Positioning**: `position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 50`
+
+**Auto-dismiss**: `setTimeout(() => removeToast(id), 3000)` in context
+
+**Animation**: `Toast.module.css` keyframe:
+```css
+@keyframes slideIn {
+  from { transform: translateX(110%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+```
+
+**Variant colors**: success → green-600, error → red-600, info → blue-600
+
+---
+
+### Mobile Navigation (Req 20)
+
+**Component**: `src/components/MobileBottomNav/MobileBottomNav.jsx`
+
+**Visibility**: `block md:hidden` (Tailwind)
+
+**Tabs**: Home (`Home` icon), Stores (`Store` icon), Wallet (`Wallet` icon), Profile (`User` icon — placeholder, no action)
+
+**Active tab**: `text-primary` + `border-t-2 border-primary`
+
+**Styling**: `fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg`
+
+---
+
+### Render Cold Start Handling (Req 21)
+
+**Flow** (in App.jsx `useEffect`):
+
+```
+1. Call getHealth() with a 3s timeout threshold
+2. If no response within 3s → show "Waking up server..." banner
+3. Poll getHealth() every 2s until success
+4. On success → hide banner → call fetchData()
+```
+
+**UI**: A dismissible banner below the Header, not a modal. Disappears automatically on health check success.
+
+---
+
+### API Service Layer (Req 22)
+
+**Additions to `src/services/api.js`**:
+
+```javascript
+export const getHealth = async () => {
+  const response = await apiClient.get('/health');
+  return response.data;
+};
+```
+
+All existing exports (`getWallet`, `getMerchants`, `trackMerchantClick`) remain. No second Axios instance is created.
+
+---
+
+### Updated Component Hierarchy
+
+```
+App
+├── ToastProvider (wraps everything)
+├── Header
+├── HeroSection
+├── CategoryPills          ← new
+├── WalletCard (unified)   ← replaces 3-card layout
+├── MerchantGrid
+│   └── MerchantCard[]     ← enhanced
+├── HowItWorks             ← new
+├── TransactionList
+└── MobileBottomNav        ← new (mobile only)
+```
+
+### Updated Correctness Properties
+
+**Property 15: Toast Trigger from Any Component**
+Any component calling `showToast(message, variant)` via `useToast` should result in a visible toast at bottom-right within one render cycle.
+*Validates: Req 19.1, 19.6*
+
+**Property 16: Category Filter Completeness**
+For any active category, the rendered merchant count should equal the count of merchants whose `category` field matches the active category.
+*Validates: Req 15.3, 15.6*
+
+**Property 17: Health Poll Progression**
+If `getHealth()` fails N times then succeeds, the "Waking up server..." banner should be visible during all N failures and hidden after the success.
+*Validates: Req 21.1, 21.3, 21.4*
+
+**Property 18: Count-Up Accuracy**
+For any wallet `available` value, the count-up animation should end at exactly that value (no rounding or truncation).
+*Validates: Req 18.3*

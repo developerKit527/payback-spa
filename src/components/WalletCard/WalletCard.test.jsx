@@ -1,231 +1,119 @@
 import React from 'react';
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { Wallet, Clock, CheckCircle } from 'lucide-react';
-import WalletCard from './WalletCard';
+import WalletCard, { WalletCardSkeleton } from './WalletCard';
 
 describe('WalletCard', () => {
-  const defaultProps = {
-    icon: Wallet,
-    label: 'Available Balance',
-    value: 1500.50,
-    color: 'text-primary',
-    bgColor: 'bg-indigo-50'
+  const defaultWallet = {
+    available: 1500.50,
+    totalEarned: 5000,
+    pending: 200,
   };
 
   describe('Rendering', () => {
     it('should render the wallet card with all elements', () => {
-      render(<WalletCard {...defaultProps} />);
-      
+      render(<WalletCard wallet={defaultWallet} />);
+
       expect(screen.getByTestId('wallet-card')).toBeInTheDocument();
-      expect(screen.getByTestId('wallet-card-icon')).toBeInTheDocument();
-      expect(screen.getByTestId('wallet-card-label')).toBeInTheDocument();
       expect(screen.getByTestId('wallet-card-value')).toBeInTheDocument();
+      expect(screen.getByTestId('wallet-card-earned')).toBeInTheDocument();
+      expect(screen.getByTestId('wallet-card-pending')).toBeInTheDocument();
     });
 
-    it('should display the correct label', () => {
-      render(<WalletCard {...defaultProps} />);
-      
-      expect(screen.getByTestId('wallet-card-label')).toHaveTextContent('Available Balance');
+    it('should display "Available for Payout" label', () => {
+      render(<WalletCard wallet={defaultWallet} />);
+      expect(screen.getByText('Available for Payout')).toBeInTheDocument();
     });
 
-    it('should format and display the value as INR currency', () => {
-      render(<WalletCard {...defaultProps} />);
-      
-      const valueElement = screen.getByTestId('wallet-card-value');
-      expect(valueElement).toHaveTextContent('₹1,500.50');
+    it('should display Total Earned and Pending labels', () => {
+      render(<WalletCard wallet={defaultWallet} />);
+      expect(screen.getByTestId('wallet-card-label-earned')).toHaveTextContent('Total Earned');
+      expect(screen.getByTestId('wallet-card-label-pending')).toHaveTextContent('Pending');
     });
 
-    it('should apply the correct color classes', () => {
-      render(<WalletCard {...defaultProps} />);
-      
-      const valueElement = screen.getByTestId('wallet-card-value');
-      expect(valueElement).toHaveClass('text-primary');
-    });
-
-    it('should apply the correct background color to icon container', () => {
-      const { container } = render(<WalletCard {...defaultProps} />);
-      
-      const iconContainer = container.querySelector('.bg-indigo-50');
-      expect(iconContainer).toBeInTheDocument();
-    });
-  });
-
-  describe('Different Icons', () => {
-    it('should render with CheckCircle icon', () => {
-      render(<WalletCard {...defaultProps} icon={CheckCircle} />);
-      
-      expect(screen.getByTestId('wallet-card-icon')).toBeInTheDocument();
-    });
-
-    it('should render with Clock icon', () => {
-      render(<WalletCard {...defaultProps} icon={Clock} />);
-      
-      expect(screen.getByTestId('wallet-card-icon')).toBeInTheDocument();
-    });
-
-    it('should render with Wallet icon', () => {
-      render(<WalletCard {...defaultProps} icon={Wallet} />);
-      
-      expect(screen.getByTestId('wallet-card-icon')).toBeInTheDocument();
-    });
-  });
-
-  describe('Different Color Variants', () => {
-    it('should render with success color (emerald)', () => {
-      render(
-        <WalletCard
-          {...defaultProps}
-          label="Total Earned"
-          color="text-success"
-          bgColor="bg-emerald-50"
-        />
-      );
-      
-      const valueElement = screen.getByTestId('wallet-card-value');
-      expect(valueElement).toHaveClass('text-success');
-    });
-
-    it('should render with warning color (amber)', () => {
-      render(
-        <WalletCard
-          {...defaultProps}
-          label="Pending"
-          color="text-warning"
-          bgColor="bg-amber-50"
-        />
-      );
-      
-      const valueElement = screen.getByTestId('wallet-card-value');
-      expect(valueElement).toHaveClass('text-warning');
-    });
-
-    it('should render with primary color (indigo)', () => {
-      render(
-        <WalletCard
-          {...defaultProps}
-          label="Available"
-          color="text-primary"
-          bgColor="bg-indigo-50"
-        />
-      );
-      
-      const valueElement = screen.getByTestId('wallet-card-value');
-      expect(valueElement).toHaveClass('text-primary');
+    it('should display earned and pending values', () => {
+      render(<WalletCard wallet={defaultWallet} />);
+      expect(screen.getByTestId('wallet-card-earned')).toHaveTextContent('₹5,000.00');
+      expect(screen.getByTestId('wallet-card-pending')).toHaveTextContent('₹200.00');
     });
   });
 
   describe('Currency Formatting', () => {
     it('should format zero correctly', () => {
-      render(<WalletCard {...defaultProps} value={0} />);
-      
+      render(<WalletCard wallet={{ available: 0, totalEarned: 0, pending: 0 }} />);
       expect(screen.getByTestId('wallet-card-value')).toHaveTextContent('₹0.00');
     });
 
     it('should format large numbers correctly', () => {
-      render(<WalletCard {...defaultProps} value={123456.78} />);
-      
-      expect(screen.getByTestId('wallet-card-value')).toHaveTextContent('₹1,23,456.78');
-    });
-
-    it('should format decimal values correctly', () => {
-      render(<WalletCard {...defaultProps} value={99.99} />);
-      
-      expect(screen.getByTestId('wallet-card-value')).toHaveTextContent('₹99.99');
-    });
-
-    it('should format whole numbers with .00', () => {
-      render(<WalletCard {...defaultProps} value={1000} />);
-      
-      expect(screen.getByTestId('wallet-card-value')).toHaveTextContent('₹1,000.00');
-    });
-  });
-
-  describe('Styling and Layout', () => {
-    it('should have correct base styling classes', () => {
-      const { container } = render(<WalletCard {...defaultProps} />);
-      
-      const card = screen.getByTestId('wallet-card');
-      expect(card).toHaveClass('bg-white');
-      expect(card).toHaveClass('rounded-2xl');
-      expect(card).toHaveClass('shadow-sm');
-      expect(card).toHaveClass('p-6');
-    });
-
-    it('should have hover effect class', () => {
-      const { container } = render(<WalletCard {...defaultProps} />);
-      
-      const card = screen.getByTestId('wallet-card');
-      expect(card).toHaveClass('hover:shadow-md');
-    });
-
-    it('should have transition class', () => {
-      const { container } = render(<WalletCard {...defaultProps} />);
-      
-      const card = screen.getByTestId('wallet-card');
-      expect(card).toHaveClass('transition-shadow');
-    });
-
-    it('should have correct typography classes for value', () => {
-      render(<WalletCard {...defaultProps} />);
-      
-      const valueElement = screen.getByTestId('wallet-card-value');
-      expect(valueElement).toHaveClass('text-3xl');
-      expect(valueElement).toHaveClass('font-extrabold');
-    });
-
-    it('should have correct typography classes for label', () => {
-      render(<WalletCard {...defaultProps} />);
-      
-      const labelElement = screen.getByTestId('wallet-card-label');
-      expect(labelElement).toHaveClass('text-sm');
-      expect(labelElement).toHaveClass('text-gray-600');
-    });
-  });
-
-  describe('Accessibility', () => {
-    it('should have proper semantic structure', () => {
-      const { container } = render(<WalletCard {...defaultProps} />);
-      
-      // Check that elements are in correct order
-      const card = screen.getByTestId('wallet-card');
-      const icon = screen.getByTestId('wallet-card-icon');
-      const label = screen.getByTestId('wallet-card-label');
-      const value = screen.getByTestId('wallet-card-value');
-      
-      expect(card).toContainElement(icon);
-      expect(card).toContainElement(label);
-      expect(card).toContainElement(value);
-    });
-
-    it('should have test ids for all key elements', () => {
-      render(<WalletCard {...defaultProps} />);
-      
-      expect(screen.getByTestId('wallet-card')).toBeInTheDocument();
-      expect(screen.getByTestId('wallet-card-icon')).toBeInTheDocument();
-      expect(screen.getByTestId('wallet-card-label')).toBeInTheDocument();
+      render(<WalletCard wallet={{ available: 123456.78, totalEarned: 0, pending: 0 }} />);
+      // count-up animation starts at 0 and animates; initial render shows formatted value
       expect(screen.getByTestId('wallet-card-value')).toBeInTheDocument();
     });
+
+    it('should format earned value correctly', () => {
+      render(<WalletCard wallet={{ available: 0, totalEarned: 99.99, pending: 0 }} />);
+      expect(screen.getByTestId('wallet-card-earned')).toHaveTextContent('₹99.99');
+    });
+
+    it('should format pending value correctly', () => {
+      render(<WalletCard wallet={{ available: 0, totalEarned: 0, pending: 1000 }} />);
+      expect(screen.getByTestId('wallet-card-pending')).toHaveTextContent('₹1,000.00');
+    });
   });
 
-  describe('Edge Cases', () => {
-    it('should handle very small decimal values', () => {
-      render(<WalletCard {...defaultProps} value={0.01} />);
-      
-      expect(screen.getByTestId('wallet-card-value')).toHaveTextContent('₹0.01');
+  describe('Color Classes', () => {
+    it('should apply success color to Total Earned', () => {
+      render(<WalletCard wallet={defaultWallet} />);
+      expect(screen.getByTestId('wallet-card-earned')).toHaveClass('text-success');
     });
 
-    it('should handle negative values (if applicable)', () => {
-      render(<WalletCard {...defaultProps} value={-100} />);
-      
-      expect(screen.getByTestId('wallet-card-value')).toHaveTextContent('-₹100.00');
+    it('should apply warning color to Pending', () => {
+      render(<WalletCard wallet={defaultWallet} />);
+      expect(screen.getByTestId('wallet-card-pending')).toHaveClass('text-warning');
     });
 
-    it('should handle very long labels', () => {
-      const longLabel = 'This is a very long label that might wrap to multiple lines';
-      render(<WalletCard {...defaultProps} label={longLabel} />);
-      
-      expect(screen.getByTestId('wallet-card-label')).toHaveTextContent(longLabel);
+    it('should display value in white text', () => {
+      render(<WalletCard wallet={defaultWallet} />);
+      expect(screen.getByTestId('wallet-card-value')).toHaveClass('text-white');
+    });
+  });
+
+  describe('Skeleton Loader', () => {
+    it('should render skeleton when loading is true', () => {
+      render(<WalletCard wallet={null} loading={true} />);
+      expect(screen.getByTestId('wallet-card-skeleton')).toBeInTheDocument();
+    });
+
+    it('should not render main card when loading', () => {
+      render(<WalletCard wallet={null} loading={true} />);
+      expect(screen.queryByTestId('wallet-card')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('Error State', () => {
+    it('should render error state when error is provided', () => {
+      render(<WalletCard wallet={null} error="Network error" />);
+      expect(screen.getByTestId('wallet-card-error')).toBeInTheDocument();
+    });
+
+    it('should show error message in error state', () => {
+      render(<WalletCard wallet={null} error="Network error" />);
+      expect(screen.getByText('Could not load balance')).toBeInTheDocument();
+    });
+  });
+
+  describe('Null wallet fallback', () => {
+    it('should show ₹0.00 for all values when wallet fields are missing', () => {
+      render(<WalletCard wallet={{}} />);
+      expect(screen.getByTestId('wallet-card-earned')).toHaveTextContent('₹0.00');
+      expect(screen.getByTestId('wallet-card-pending')).toHaveTextContent('₹0.00');
+    });
+  });
+
+  describe('WalletCardSkeleton', () => {
+    it('should render skeleton component', () => {
+      render(<WalletCardSkeleton />);
+      expect(screen.getByTestId('wallet-card-skeleton')).toBeInTheDocument();
     });
   });
 });

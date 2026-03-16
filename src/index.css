@@ -1,7 +1,29 @@
 @import "tailwindcss";
 
+/* ── Design System Color Tokens ─────────────────────────────── */
 :root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  --color-primary:   #FF4D00;  /* orange-red  — main CTA, badges  */
+  --color-secondary: #1A1A2E;  /* deep navy   — hero bg, card bg  */
+  --color-accent:    #FFD700;  /* gold        — featured ribbon   */
+  --color-success:   #10B981;  /* Emerald-500 — confirmed status  */
+  --color-warning:   #F59E0B;  /* Amber-500   — pending status    */
+}
+
+/* ── Tailwind v4 theme tokens ───────────────────────────────── */
+@theme {
+  --color-primary:   #FF4D00;
+  --color-secondary: #1A1A2E;
+  --color-accent:    #FFD700;
+  --color-brand:     #CC3D00;
+  --color-success:   #10B981;
+  --color-warning:   #F59E0B;
+
+  --font-family-heading: 'Sora', system-ui, sans-serif;
+  --font-family-body:    'DM Sans', system-ui, sans-serif;
+}
+
+/* ── Typography ─────────────────────────────────────────────── */
+:root {
   line-height: 1.5;
   font-weight: 400;
 }
@@ -12,4 +34,9 @@ body {
   min-height: 100vh;
   background-color: #F9FAFB;
   color: #111827;
+  font-family: 'DM Sans', system-ui, sans-serif;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Sora', system-ui, sans-serif;
 }

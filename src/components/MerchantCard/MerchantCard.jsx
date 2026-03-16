@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import PropTypes from 'prop-types';
 import { ExternalLink } from 'lucide-react';
 import styles from './MerchantCard.module.css';
+import { OFFER_TAGS, FEATURED_IDS } from '../../utils/offerTags';
 
 // Deterministic color palette for logo fallbacks
 const FALLBACK_COLORS = [
@@ -29,7 +30,7 @@ export function MerchantCardSkeleton() {
 }
 
 /**
- * MerchantCard - Displays a merchant with logo (or fallback), cashback badge, and action button
+ * MerchantCard - Enhanced merchant card with offer tag, featured ribbon, hover lift
  */
 function MerchantCard({ merchant, onActivate }) {
   const [isActivating, setIsActivating] = useState(false);
@@ -48,18 +49,27 @@ function MerchantCard({ merchant, onActivate }) {
   const fallbackColor = getFallbackColor(merchant.name);
   const firstLetter = merchant.name?.charAt(0).toUpperCase() || '?';
   const showFallback = imageError || !merchant.logoUrl;
+  const offerTag = OFFER_TAGS[merchant.id];
+  const isFeatured = FEATURED_IDS.includes(merchant.id);
 
   return (
     <div
-      className="bg-white rounded-2xl shadow-sm p-6 hover:shadow-md transition-shadow flex flex-col items-center relative"
+      className={`${styles.card} bg-white rounded-2xl shadow-sm p-6 flex flex-col items-center relative overflow-hidden`}
       data-testid="merchant-card"
     >
-      {/* Cashback Badge */}
+      {/* Featured gold ribbon */}
+      {isFeatured && (
+        <div className={styles.ribbon} data-testid="featured-ribbon">
+          ★ Featured
+        </div>
+      )}
+
+      {/* Cashback Badge — top right */}
       <div
-        className="absolute top-4 right-4 bg-emerald-50 text-success px-3 py-1 rounded-full text-xs font-semibold"
+        className="absolute top-4 right-4 bg-orange-50 text-primary px-3 py-1 rounded-full text-xs font-semibold"
         data-testid="cashback-badge-corner"
       >
-        {merchant.cashbackPercentage}% Cashback
+        Upto {merchant.cashbackRate}% Cashback
       </div>
 
       {/* Logo or Fallback */}
@@ -86,24 +96,35 @@ function MerchantCard({ merchant, onActivate }) {
 
       {/* Merchant Name */}
       <h3
-        className="text-lg font-semibold text-gray-900 mb-4 text-center"
+        className="text-lg font-semibold text-gray-900 mb-2 text-center"
         data-testid="merchant-name"
       >
         {merchant.name}
       </h3>
 
-      {/* Shop & Earn Button */}
+      {/* Offer Tag */}
+      {offerTag && (
+        <span
+          className="mb-4 px-3 py-1 bg-teal-50 text-teal-700 text-xs font-semibold rounded-full"
+          data-testid="offer-tag"
+        >
+          {offerTag}
+        </span>
+      )}
+      {!offerTag && <div className="mb-4" />}
+
+      {/* Shop Now Button */}
       <button
         onClick={handleClick}
         disabled={isActivating}
-        className="w-full bg-primary text-white py-3 px-6 rounded-lg font-semibold hover:bg-brand disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+        className="w-full bg-white border-2 border-primary text-primary py-3 px-6 rounded-lg font-semibold hover:bg-primary hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
         data-testid="shop-earn-button"
       >
         {isActivating ? (
           'Opening...'
         ) : (
           <>
-            Shop & Earn
+            Shop Now →
             <ExternalLink className="w-4 h-4" />
           </>
         )}
@@ -117,8 +138,8 @@ MerchantCard.propTypes = {
     id: PropTypes.number.isRequired,
     name: PropTypes.string.isRequired,
     logoUrl: PropTypes.string,
-    cashbackPercentage: PropTypes.number.isRequired,
-    manualTrackingUrl: PropTypes.string.isRequired,
+    cashbackRate: PropTypes.number.isRequired,
+    manualTrackingUrl: PropTypes.string,
   }).isRequired,
   onActivate: PropTypes.func.isRequired,
 };

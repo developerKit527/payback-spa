@@ -7,24 +7,23 @@ export default {
   theme: {
     extend: {
       colors: {
-        primary: '#4F46E5',        // Indigo-600
-        brand: '#4338CA',          // Indigo-700
-        accent: '#C026D3',         // Fuchsia-600
-        success: '#10B981',        // Emerald-500
-        warning: '#F59E0B',        // Amber-500
-        'indigo-600': '#4F46E5',
-        'indigo-700': '#4338CA',
-        'indigo-50': '#EEF2FF',
-        'fuchsia-600': '#C026D3',
-        'fuchsia-700': '#A21CAF',
-        'emerald-500': '#10B981',
-        'emerald-50': '#ECFDF5',
-        'amber-500': '#F59E0B',
-        'amber-50': '#FFFBEB',
-        'gray-50': '#F9FAFB',
+        // ── New design system tokens (Req 13) ──
+        primary:   '#FF4D00',  // orange-red  (replaces Indigo-600 everywhere)
+        secondary: '#1A1A2E',  // deep navy
+        accent:    '#FFD700',  // gold
+        brand:     '#CC3D00',  // primary hover (darker orange-red)
+        // ── Status colors ──
+        success:   '#10B981',  // Emerald-500
+        warning:   '#F59E0B',  // Amber-500
+        // ── Neutral palette ──
+        'gray-50':  '#F9FAFB',
         'gray-200': '#E5E7EB',
         'gray-600': '#4B5563',
         'gray-900': '#111827',
+      },
+      fontFamily: {
+        heading: ['Sora', 'system-ui', 'sans-serif'],
+        body:    ['DM Sans', 'system-ui', 'sans-serif'],
       },
     },
   },
