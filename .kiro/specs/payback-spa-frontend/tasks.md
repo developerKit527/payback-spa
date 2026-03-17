@@ -643,13 +643,15 @@ This implementation plan breaks down the Payback SPA Frontend into discrete, inc
     - Test logout button calls auth.logout
 
 - [ ] 40. Wire auth into App.jsx and main.jsx
-  - [ ] 40.1 Update `App.jsx`
+  - [x] 40.1 Update `App.jsx`
     - Add `authModal` state (`null | 'login' | 'register'`)
     - Pass `onSignIn` / `onJoinNow` callbacks to Header
     - Render `<LoginModal>` and `<RegisterModal>` conditionally
     - Import `useAuth`; pass `token` to `getWallet(token)` in `fetchData`
     - Add `isAuthenticated` to `useEffect` dependency array so wallet re-fetches on auth change
-    - _Requirements: 37.1, 37.2, 37.3_
+    - WHEN `isAuthenticated` is false, render "Your wallet is waiting" prompt card (lucide Wallet icon + Sign In / Join Now buttons) instead of `<WalletCard />`
+    - WHEN `isAuthenticated` is false, hide the Transaction History section entirely
+    - _Requirements: 37.1, 37.2, 37.3, 37.4, 37.5, 37.6_
 
   - [ ] 40.2 Wrap app in `AuthProvider` in `main.jsx`
     - `<ToastProvider>` wraps `<AuthProvider>` wraps `<App />` — ToastProvider must be outer so AuthContext can call showToast during logout
@@ -662,3 +664,24 @@ This implementation plan breaks down the Payback SPA Frontend into discrete, inc
   - Verify logout: click logout → toast → navbar reverts to Sign In / Join Now
   - Verify wallet re-fetches on login (calls /wallet/me) and on logout (calls /wallet/1)
   - Ask the user if questions arise before writing any code
+
+---
+
+## Tasks: Transaction Creation (Requirement 38)
+
+- [x] 42. Wire transaction creation on merchant click
+  - [x] 42.1 Add `createTransaction` to `src/services/api.js`
+    - Export `createTransaction(merchantId, orderAmount, token)` → `POST /api/v1/transactions` with body `{ merchantId, orderAmount }` and `Authorization: Bearer {token}` header
+    - _Requirements: 38.1_
+
+  - [x] 42.2 Update `handleMerchantActivate` in `App.jsx`
+    - WHEN `isAuthenticated` is true: call `createTransaction(merchantId, 1000, token)` before opening the URL
+    - On success: call `getWallet(token)` to refresh wallet + transactions state
+    - On failure: show toast "Could not record transaction" but still open the merchant URL
+    - WHEN `isAuthenticated` is false: skip `createTransaction`, open URL as before
+    - _Requirements: 38.2, 38.3, 38.4, 38.5, 38.6_
+
+  - [ ]* 42.3 Write property test for transaction creation guard
+    - **Property 26: Transaction Creation Auth Guard**
+    - **Validates: Req 38.4, 38.6**
+    - When token is null, `createTransaction` is never called regardless of merchant clicked

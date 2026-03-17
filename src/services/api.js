@@ -94,6 +94,22 @@ export const trackMerchantClick = async (merchantId) => {
 };
 
 /**
+ * Create a transaction for the authenticated user
+ * @param {number} merchantId
+ * @param {number} orderAmount
+ * @param {string} token - JWT token
+ * @returns {Promise} TransactionDTO
+ */
+export const createTransaction = async (merchantId, orderAmount, token) => {
+  const response = await apiClient.post(
+    '/transactions',
+    { merchantId, orderAmount },
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  return response.data;
+};
+
+/**
  * Health check — used for cold-start detection
  * @returns {Promise} Health status
  */

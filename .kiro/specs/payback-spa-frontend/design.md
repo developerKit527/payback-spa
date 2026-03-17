@@ -1695,6 +1695,36 @@ const fetchData = async () => {
 - `token` present → `GET /api/v1/wallet/me` with `Authorization: Bearer {token}`
 - no `token` → `GET /api/v1/wallet/1`
 
+**Unauthenticated wallet section** — when `isAuthenticated` is false, the wallet section renders a prompt card instead of `WalletCard`:
+
+```jsx
+<section className="bg-gradient-to-r from-emerald-50 via-white to-emerald-50 py-12 ...">
+  <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-8
+                  flex flex-col items-center text-center gap-4 max-w-md mx-auto">
+    {/* lucide Wallet icon in emerald circle */}
+    <div className="w-14 h-14 rounded-full bg-emerald-100 flex items-center justify-center">
+      <Wallet className="w-7 h-7 text-emerald-600" />
+    </div>
+    <h2 className="text-xl font-bold text-slate-900">Your wallet is waiting</h2>
+    <p className="text-slate-500 text-sm">
+      Sign in or create an account to track your cashback earnings.
+    </p>
+    <div className="flex gap-3 mt-2">
+      <button onClick={() => setAuthModal('login')} ...>Sign In</button>
+      <button onClick={() => setAuthModal('register')} ...>Join Now</button>
+    </div>
+  </div>
+</section>
+```
+
+**Transaction History section** — conditionally rendered only when `isAuthenticated` is true:
+```jsx
+{isAuthenticated && (
+  <section className="py-12">
+    <TransactionList transactions={transactions} loading={loading} />
+  </section>
+)}
+
 ---
 
 ### Modal State Management
@@ -1749,3 +1779,124 @@ For any call to `getWallet`, if a non-null token is passed the request URL SHALL
 **Property 25: Register Validation**
 For any combination of name (length < 2), password (length < 6), or mismatched confirm password, the Register modal SHALL display an inline error and SHALL NOT call the API.
 *Validates: Req 35.3*
+
+
+---
+
+## Design Additions: Transaction Creation (Requirement 38)
+
+### Transaction Creation API Method (Req 38.1)
+
+**File**: `src/services/api.js` (addition only)
+
+```javascript
+// POST /api/v1/transactions
+export const createTransaction = async (merchantId, orderAmount, token) => {
+  const response = await apiClient.post(
+    '/transactions',
+    { merchantId, orderAmount },
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  return response.data; // TransactionDTO
+};
+```
+
+**Backend endpoint**: `POST /api/v1/transactions` — requires JWT, returns the created `TransactionDTO`:
+```json
+{
+  "id": 3,
+  "merchantName": "Flipkart",
+  "orderAmount": "1000.00",
+  "cashbackAmount": "100.00",
+  "status": "PENDING",
+  "createdAt": "2026-03-17T13:46:49.394605"
+}
+```
+
+---
+
+### Updated `handleMerchantActivate` Flow (Req 38.2–38.6)
+
+**File**: `App.jsx`
+
+**Updated flow**:
+```
+User clicks "Shop Now" on a MerchantCard
+  ↓
+handleMerchantActivate(merchantId) called
+  ↓
+GET /api/v1/merchants/{id}/click  → get redirect URL
+  ↓
+isAuthenticated?
+  YES → POST /api/v1/transactions { merchantId, orderAmount: 1000 }
+          ↓ success → getWallet(token) to refresh wallet + transactions
+          ↓ failure → showToast('Could not record transaction', 'error')
+                       (continue to open URL regardless)
+  NO  → skip createTransaction
+  ↓
+Open redirect URL in new tab (always, regardless of transaction result)
+```
+
+**Code sketch**:
+```javascript
+const handleMerchantActivate = async (merchantId) => {
+  try {
+    const result = await trackMerchantClick(merchantId);
+    const url = result?.redirectUrl || result?.url || result;
+
+    // Record transaction for authenticated users
+    if (isAuthenticated && token) {
+      try {
+        await createTransaction(merchantId, 1000, token);
+        // Refresh wallet so new transaction appears immediately
+        const updatedWallet = await getWallet(token);
+        setWallet(updatedWallet);
+        setTransactions(updatedWallet.transactions || []);
+      } catch (txErr) {
+        showToast('Could not record transaction', 'error');
+        // Do NOT return — still open the URL below
+      }
+    }
+
+    if (!url || typeof url !== 'string') {
+      showToast('Merchant link not available yet.', 'info');
+      return;
+    }
+    window.open(url, '_blank');
+  } catch (err) {
+    showToast('Failed to activate cashback. Please try again.', 'error');
+  }
+};
+```
+
+**Key design decisions**:
+- `orderAmount` is hardcoded to `1000` (a sensible default; real amount tracking is a future feature)
+- Transaction failure is non-blocking — the user always reaches the merchant site
+- Wallet refresh is a targeted re-fetch (not a full `fetchData()`) to avoid re-triggering the health check
+- The guard `isAuthenticated && token` ensures `createTransaction` is never called for unauthenticated users
+
+---
+
+### Updated Data Flow Diagram
+
+```
+User clicks "Shop Now"
+  ↓
+trackMerchantClick(id)          GET /merchants/{id}/click
+  ↓
+[if authenticated]
+createTransaction(id, 1000, token)  POST /transactions
+  ↓ success
+getWallet(token)                GET /wallet/me
+  → setWallet + setTransactions (live update in UI)
+  ↓
+window.open(url, '_blank')      (always)
+```
+
+---
+
+### New Correctness Property
+
+**Property 26: Transaction Creation Auth Guard**
+For any merchant click where `token` is `null` or `isAuthenticated` is `false`, `createTransaction` SHALL NOT be called. The merchant URL SHALL still be opened.
+*Validates: Req 38.4, 38.6*

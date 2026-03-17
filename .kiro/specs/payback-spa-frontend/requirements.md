@@ -482,3 +482,19 @@ The Payback SPA Frontend is a modern React-based single-page application that pr
 1. WHEN `isAuthenticated` is true, `App.jsx` SHALL fetch `GET /api/v1/wallet/me` with the JWT token in the `Authorization` header
 2. WHEN `isAuthenticated` is false, `App.jsx` SHALL fetch `GET /api/v1/wallet/1` as a public fallback
 3. `App.jsx` SHALL re-fetch wallet data whenever the auth state changes (login, logout, or token restored from localStorage)
+4. WHEN `isAuthenticated` is false, the wallet section SHALL display a "Your wallet is waiting" prompt card with a lucide `Wallet` icon, a short description, and Sign In / Join Now buttons instead of the WalletCard component
+5. WHEN `isAuthenticated` is false, the Transaction History section SHALL be hidden entirely
+6. WHEN `isAuthenticated` is true, both the WalletCard and Transaction History section SHALL be visible
+
+### Requirement 38: Transaction Creation from Frontend
+
+**User Story:** As a logged-in user, I want clicking "Shop Now" on a merchant card to record a transaction, so that my cashback is tracked in my wallet.
+
+#### Acceptance Criteria
+
+1. THE `api.js` SHALL export `createTransaction(merchantId, orderAmount, token)` that sends `POST /api/v1/transactions` with body `{ merchantId, orderAmount }` and `Authorization: Bearer {token}` header
+2. WHEN a logged-in user clicks "Shop Now" on a merchant card, `App.jsx` SHALL call `createTransaction` with the merchant's ID, a default `orderAmount` of `1000`, and the current JWT token before opening the merchant URL
+3. WHEN `createTransaction` succeeds, `App.jsx` SHALL refresh wallet data by calling `getWallet(token)` so the new transaction appears in the wallet and transaction history
+4. WHEN `isAuthenticated` is false, `App.jsx` SHALL skip the `createTransaction` call and only open the merchant URL (existing behaviour)
+5. IF `createTransaction` fails, `App.jsx` SHALL show a toast "Could not record transaction" but SHALL still open the merchant URL so the user is not blocked
+6. THE `createTransaction` function SHALL NOT be called if `token` is null or undefined
