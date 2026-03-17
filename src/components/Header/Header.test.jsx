@@ -2,11 +2,23 @@ import React from 'react';
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import Header from './Header';
+import { ToastProvider } from '../../context/ToastContext';
+import { AuthProvider } from '../../context/AuthContext';
+
+// Wrap with required providers since Header uses useAuth()
+const renderHeader = (props = {}) =>
+  render(
+    <ToastProvider>
+      <AuthProvider>
+        <Header {...props} />
+      </AuthProvider>
+    </ToastProvider>
+  );
 
 describe('Header', () => {
   describe('Rendering', () => {
     it('should render the header with all elements', () => {
-      render(<Header />);
+      renderHeader();
       
       expect(screen.getByText('Payback')).toBeInTheDocument();
       expect(screen.getByPlaceholderText(/Search stores/i)).toBeInTheDocument();
@@ -15,7 +27,7 @@ describe('Header', () => {
     });
 
     it('should display the logo', () => {
-      render(<Header />);
+      renderHeader();
       
       const logo = screen.getByText('Payback');
       expect(logo).toHaveClass('text-white');
@@ -23,7 +35,7 @@ describe('Header', () => {
     });
 
     it('should display search bar with placeholder', () => {
-      render(<Header />);
+      renderHeader();
       
       const searchInput = screen.getByPlaceholderText(/Search stores, brands, or categories/i);
       expect(searchInput).toBeInTheDocument();
@@ -31,7 +43,7 @@ describe('Header', () => {
     });
 
     it('should display Sign In and Join Now buttons', () => {
-      render(<Header />);
+      renderHeader();
       
       expect(screen.getByText('Sign In')).toBeInTheDocument();
       expect(screen.getByText('Join Now')).toBeInTheDocument();
@@ -46,13 +58,13 @@ describe('Header', () => {
         pending: 200,
       };
       
-      render(<Header wallet={wallet} />);
+      renderHeader({ wallet });
       
       expect(screen.getByText('₹500.00')).toBeInTheDocument();
     });
 
     it('should not display balance when wallet is null', () => {
-      render(<Header wallet={null} />);
+      renderHeader({ wallet: null });
       
       expect(screen.queryByText('Available Balance')).not.toBeInTheDocument();
     });
@@ -64,7 +76,7 @@ describe('Header', () => {
         pending: 750,
       };
       
-      render(<Header wallet={wallet} />);
+      renderHeader({ wallet });
       
       expect(screen.getByText('₹1,250.50')).toBeInTheDocument();
     });
@@ -72,7 +84,7 @@ describe('Header', () => {
 
   describe('Styling', () => {
     it('should have sticky positioning', () => {
-      const { container } = render(<Header />);
+      const { container } = renderHeader();
       
       const header = container.querySelector('header');
       expect(header).toHaveClass('sticky');
@@ -80,28 +92,28 @@ describe('Header', () => {
     });
 
     it('should have emerald background', () => {
-      const { container } = render(<Header />);
+      const { container } = renderHeader();
       
       const header = container.querySelector('header');
       expect(header).toHaveClass('bg-emerald-600');
     });
 
     it('should have shadow', () => {
-      const { container } = render(<Header />);
+      const { container } = renderHeader();
       
       const header = container.querySelector('header');
       expect(header).toHaveClass('shadow-md');
     });
 
     it('should have proper z-index for stacking', () => {
-      const { container } = render(<Header />);
+      const { container } = renderHeader();
       
       const header = container.querySelector('header');
       expect(header).toHaveClass('z-50');
     });
 
     it('should have full width', () => {
-      const { container } = render(<Header />);
+      const { container } = renderHeader();
       
       const header = container.querySelector('header');
       expect(header).toHaveClass('w-full');
@@ -110,7 +122,7 @@ describe('Header', () => {
 
   describe('Search Bar Styling', () => {
     it('should have semi-transparent background', () => {
-      const { container } = render(<Header />);
+      const { container } = renderHeader();
       
       const searchInput = container.querySelector('input[type="text"]');
       expect(searchInput).toHaveClass('bg-white/20');

@@ -570,3 +570,95 @@ This implementation plan breaks down the Payback SPA Frontend into discrete, inc
     - Verify no Indigo-600 or orange (#FF4D00) remnants in components
     - Verify no dark gradient (#1A1A2E) in WalletCard
     - Verify Footer renders in App.jsx
+
+
+---
+
+## Tasks: Auth Pages (Requirements 32–37)
+
+- [ ] 35. Auth API methods
+  - [ ] 35.1 Update `src/services/api.js`
+    - Export `registerUser(name, email, password)` → POST `/auth/register`
+    - Export `loginUser(email, password)` → POST `/auth/login`
+    - Update `getWallet` to accept optional `token`; if provided call `GET /wallet/me` with `Authorization: Bearer {token}` header; otherwise call `GET /wallet/1`
+    - _Requirements: 32.1, 32.2, 32.3_
+
+  - [ ]* 35.2 Write property test for wallet endpoint routing
+    - **Property 24: Wallet Endpoint Routing**
+    - **Validates: Req 32.3, 37.1, 37.2**
+    - For any token value (null vs non-null), assert correct URL and headers are used
+
+- [ ] 36. Implement AuthContext
+  - [ ] 36.1 Create `src/context/AuthContext.jsx`
+    - Provide `user`, `token`, `isAuthenticated`, `login()`, `register()`, `logout()`
+    - On mount, read `localStorage('payback_token')` and decode with `atob()` to hydrate state
+    - `login()` / `register()` save token to localStorage and decode payload to set `user`
+    - `logout()` clears localStorage, resets state, calls `showToast('Logged out successfully', 'info')`
+    - Export `AuthProvider` and `useAuth` hook
+    - _Requirements: 33.1, 33.2, 33.3, 33.4, 33.5_
+
+  - [ ]* 36.2 Write property test for token persistence
+    - **Property 22: Token Persistence**
+    - **Validates: Req 33.3, 33.4**
+    - After login/register, localStorage has token; after logout, localStorage is null
+
+  - [ ]* 36.3 Write property test for auth state hydration
+    - **Property 23: Auth State Hydration**
+    - **Validates: Req 33.2, 33.5**
+    - For any valid JWT in localStorage on mount, isAuthenticated is true and firstName is derived correctly
+
+- [ ] 37. Implement Login Modal
+  - [ ] 37.1 Create `src/components/AuthModal/LoginModal.jsx`
+    - Modal overlay (`fixed inset-0 bg-black/50 z-50`) with white card (`bg-white rounded-3xl p-8 max-w-md`)
+    - Email + password fields; show/hide password toggle
+    - On submit: call `auth.login()`; on success close + toast "Welcome back!"; on failure show inline "Invalid email or password"
+    - Link to switch to Register modal
+    - _Requirements: 34.1, 34.2, 34.3, 34.4, 34.5_
+
+- [ ] 38. Implement Register Modal
+  - [ ] 38.1 Create `src/components/AuthModal/RegisterModal.jsx`
+    - Modal overlay with white card
+    - Name, email, password, confirm password fields; show/hide toggles on password fields
+    - Client-side validation: name ≥ 2 chars, password ≥ 6 chars, passwords match — show inline error without calling API
+    - On submit: call `auth.register()`; on success close + toast "Welcome to Payback!"; on failure show inline API error
+    - Link to switch to Login modal
+    - _Requirements: 35.1, 35.2, 35.3, 35.4, 35.5, 35.6_
+
+  - [ ]* 38.2 Write property test for register validation
+    - **Property 25: Register Validation**
+    - **Validates: Req 35.3**
+    - For any invalid input combination, API is not called and inline error is shown
+
+- [ ] 39. Update Header for auth state
+  - [ ] 39.1 Update `src/components/Header/Header.jsx`
+    - Read `isAuthenticated`, `user` from `useAuth()`
+    - WHEN authenticated: show "Hi, {firstName}" chip + `<LogOut />` icon button
+    - WHEN unauthenticated: show "Sign In" + "Join Now" buttons (existing)
+    - "Sign In" calls `onSignIn` prop; "Join Now" calls `onJoinNow` prop
+    - _Requirements: 36.1, 36.2, 36.3_
+
+  - [ ]* 39.2 Update Header tests
+    - Test authenticated state renders "Hi, {firstName}" chip
+    - Test unauthenticated state renders Sign In + Join Now buttons
+    - Test logout button calls auth.logout
+
+- [ ] 40. Wire auth into App.jsx and main.jsx
+  - [ ] 40.1 Update `App.jsx`
+    - Add `authModal` state (`null | 'login' | 'register'`)
+    - Pass `onSignIn` / `onJoinNow` callbacks to Header
+    - Render `<LoginModal>` and `<RegisterModal>` conditionally
+    - Import `useAuth`; pass `token` to `getWallet(token)` in `fetchData`
+    - Add `isAuthenticated` to `useEffect` dependency array so wallet re-fetches on auth change
+    - _Requirements: 37.1, 37.2, 37.3_
+
+  - [ ] 40.2 Wrap app in `AuthProvider` in `main.jsx`
+    - `<ToastProvider>` wraps `<AuthProvider>` wraps `<App />` — ToastProvider must be outer so AuthContext can call showToast during logout
+    - _Requirements: 33.1_
+
+- [ ] 41. Final checkpoint — Requirements 32–37
+  - Run `npm test -- --run` and confirm all tests pass
+  - Verify login flow: open modal → submit → toast → navbar shows "Hi, {name}"
+  - Verify register flow: open modal → validate → submit → toast → navbar shows "Hi, {name}"
+  - Verify logout: click logout → toast → navbar reverts to Sign In / Join Now
+  - Verify wallet re-fetches on login (calls /wallet/me) and on logout (calls /wallet/1)
+  - Ask the user if questions arise before writing any code
