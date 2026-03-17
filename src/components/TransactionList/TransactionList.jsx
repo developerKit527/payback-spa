@@ -13,18 +13,17 @@ const TransactionList = ({ transactions = [], loading = false }) => {
     });
   };
 
-  const getStatusColor = (status) => {
+  const getStatusStyle = (status) => {
     switch (status) {
-      case 'CONFIRMED':
-        return 'bg-emerald-500';
-      case 'PENDING':
-        return 'bg-amber-500';
-      case 'REJECTED':
-        return 'bg-red-500';
-      default:
-        return 'bg-gray-500';
+      case 'CONFIRMED': return 'bg-emerald-50 text-emerald-700';
+      case 'PENDING':   return 'bg-amber-50 text-amber-700';
+      case 'REJECTED':  return 'bg-red-50 text-red-700';
+      default:          return 'bg-slate-100 text-slate-600';
     }
   };
+
+  // API returns amounts as strings ("1000.00") — coerce to number
+  const toNum = (val) => parseFloat(val) || 0;
 
   if (loading) {
     return (
@@ -74,10 +73,10 @@ const TransactionList = ({ transactions = [], loading = false }) => {
               <tr key={transaction.id}>
                 <td className="font-medium text-gray-900">{transaction.merchantName}</td>
                 <td className="text-gray-600">{formatDate(transaction.createdAt)}</td>
-                <td className="font-bold text-gray-900">{formatCurrency(transaction.orderAmount)}</td>
-                <td className="font-bold text-success">{formatCurrency(transaction.cashbackAmount)}</td>
+                <td className="font-bold text-gray-900">{formatCurrency(toNum(transaction.orderAmount))}</td>
+                <td className="font-bold text-success">{formatCurrency(toNum(transaction.cashbackAmount))}</td>
                 <td>
-                  <span className={`${styles.statusBadge} ${getStatusColor(transaction.status)} text-white`}>
+                  <span className={`${styles.statusBadge} ${getStatusStyle(transaction.status)}`}>
                     {transaction.status}
                   </span>
                 </td>
@@ -96,18 +95,18 @@ const TransactionList = ({ transactions = [], loading = false }) => {
                 <h3 className="font-medium text-gray-900">{transaction.merchantName}</h3>
                 <p className="text-sm text-gray-600">{formatDate(transaction.createdAt)}</p>
               </div>
-              <span className={`${styles.statusBadge} ${getStatusColor(transaction.status)} text-white`}>
+              <span className={`${styles.statusBadge} ${getStatusStyle(transaction.status)}`}>
                 {transaction.status}
               </span>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-xs text-gray-500 mb-1">Order Amount</p>
-                <p className="font-bold text-gray-900">{formatCurrency(transaction.orderAmount)}</p>
+                <p className="font-bold text-gray-900">{formatCurrency(toNum(transaction.orderAmount))}</p>
               </div>
               <div>
                 <p className="text-xs text-gray-500 mb-1">Cashback</p>
-                <p className="font-bold text-success">{formatCurrency(transaction.cashbackAmount)}</p>
+                <p className="font-bold text-success">{formatCurrency(toNum(transaction.cashbackAmount))}</p>
               </div>
             </div>
           </div>

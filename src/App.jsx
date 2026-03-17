@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { getWallet, getMerchants, trackMerchantClick, getHealth } from './services/api';
+import { getWallet, getMerchants, trackMerchantClick, getHealth, createTransaction } from './services/api';
 import { useToast } from './hooks/useToast';
 import { useAuth } from './context/AuthContext';
 import Header from './components/Header';
@@ -9,6 +9,7 @@ import HowItWorks from './components/HowItWorks';
 import Footer from './components/Footer';
 import MobileBottomNav from './components/MobileBottomNav';
 import WalletCard, { WalletCardSkeleton } from './components/WalletCard';
+import { Wallet } from 'lucide-react';
 import MerchantGrid from './components/MerchantGrid';
 import TransactionList from './components/TransactionList';
 import LoginModal from './components/AuthModal/LoginModal';
@@ -72,6 +73,21 @@ function App() {
     try {
       const result = await trackMerchantClick(merchantId);
       const url = result?.redirectUrl || result?.url || result;
+
+      // Record transaction for authenticated users (non-blocking)
+      if (isAuthenticated && token) {
+        try {
+          await createTransaction(merchantId, 1000, token);
+          // Refresh wallet so new transaction appears immediately
+          const updatedWallet = await getWallet(token);
+          setWallet(updatedWallet);
+          setTransactions(updatedWallet.transactions || []);
+        } catch {
+          showToast('Could not record transaction', 'error');
+          // continue — still open the merchant URL below
+        }
+      }
+
       if (!url || typeof url !== 'string') {
         showToast('Merchant link not available yet.', 'info');
         return;
@@ -144,10 +160,36 @@ function App() {
 
       <main className="w-full px-8 lg:px-16 pb-20 md:pb-8">
         {/* Wallet Section */}
-        <section className="bg-gradient-to-r from-emerald-50 via-white to-emerald-50 py-12 px-8 lg:px-16 -mx-8 lg:-mx-16">
-          <h1 className="text-3xl font-bold text-slate-900 mb-6">My Wallet</h1>
-          <WalletCard wallet={wallet} loading={loading} error={error} />
-        </section>
+        {isAuthenticated ? (
+          <section className="bg-gradient-to-r from-emerald-50 via-white to-emerald-50 py-12 px-8 lg:px-16 -mx-8 lg:-mx-16">
+            <h1 className="text-3xl font-bold text-slate-900 mb-6">My Wallet</h1>
+            <WalletCard wallet={wallet} loading={loading} error={error} />
+          </section>
+        ) : (
+          <section className="bg-gradient-to-r from-emerald-50 via-white to-emerald-50 py-12 px-8 lg:px-16 -mx-8 lg:-mx-16">
+            <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-8 flex flex-col items-center text-center gap-4 max-w-md mx-auto">
+              <div className="w-14 h-14 rounded-full bg-emerald-100 flex items-center justify-center">
+                <Wallet className="w-7 h-7 text-emerald-600" />
+              </div>
+              <h2 className="text-xl font-bold text-slate-900">Your wallet is waiting</h2>
+              <p className="text-slate-500 text-sm">Sign in or create an account to track your cashback earnings.</p>
+              <div className="flex gap-3 mt-2">
+                <button
+                  onClick={() => setAuthModal('login')}
+                  className="border border-slate-200 text-slate-700 rounded-full px-5 py-2.5 text-sm font-medium hover:border-emerald-500 hover:text-emerald-600 transition-colors"
+                >
+                  Sign In
+                </button>
+                <button
+                  onClick={() => setAuthModal('register')}
+                  className="bg-emerald-500 text-white rounded-full px-5 py-2.5 text-sm font-semibold hover:bg-emerald-600 transition-colors"
+                >
+                  Join Now
+                </button>
+              </div>
+            </div>
+          </section>
+        )}
 
         <div className="h-px bg-gradient-to-r from-transparent via-emerald-200 to-transparent" />
 
@@ -171,10 +213,12 @@ function App() {
           </div>
         </section>
 
-        {/* Transaction History Section */}
-        <section className="py-12">
-          <TransactionList transactions={transactions} loading={loading} />
-        </section>
+        {/* Transaction History Section — only shown when logged in */}
+        {isAuthenticated && (
+          <section className="py-12">
+            <TransactionList transactions={transactions} loading={loading} />
+          </section>
+        )}
 
         <div className="h-px bg-gradient-to-r from-transparent via-emerald-200 to-transparent" />
       </main>
