@@ -1188,3 +1188,282 @@ If `getHealth()` fails N times then succeeds, the "Waking up server..." banner s
 **Property 18: Count-Up Accuracy**
 For any wallet `available` value, the count-up animation should end at exactly that value (no rounding or truncation).
 *Validates: Req 18.3*
+
+
+---
+
+## Design Additions: Requirements 23–31 (UI Redesign)
+
+### Design System Reset (Req 23)
+
+#### New Color Tokens
+
+```css
+/* index.css — replaces existing custom properties */
+:root {
+  --color-primary:    #10B981;  /* emerald-500 */
+  --color-bg:         #F8FAFC;  /* slate-50 */
+  --color-surface:    #FFFFFF;  /* white */
+  --color-text:       #0F172A;  /* slate-900 */
+  --color-text-muted: #64748B;  /* slate-500 */
+  --color-border:     #E2E8F0;  /* slate-200 */
+}
+```
+
+`tailwind.config.js` updates:
+```javascript
+colors: {
+  primary:   '#10B981',  // emerald-500
+  secondary: '#0F172A',  // slate-900
+  accent:    '#FFD700',  // gold (kept)
+  success:   '#10B981',
+  warning:   '#F59E0B',
+}
+```
+
+Font: Inter loaded via Google Fonts `<link>` in `index.html`. Applied to `body` in `index.css`.
+
+**Constraint**: `src/services/api.js`, `src/context/ToastContext.jsx`, `src/utils/merchantCategories.js`, `src/utils/offerTags.js` — untouched.
+
+---
+
+### Navbar Redesign (Req 24)
+
+**Component**: `src/components/Header/Header.jsx` (replace existing)
+
+**Scroll behavior**: `useEffect` adds a `scroll` event listener; sets `scrolled` state when `window.scrollY > 10`.
+
+**Layout**:
+```
+┌──────────────────────────────────────────────────────────────┐
+│  [💚 Payback]   [🔍 Search AI tools...]   [₹10,000 | Sign In | Join Now] │
+└──────────────────────────────────────────────────────────────┘
+```
+
+**Class logic**:
+```javascript
+const navClass = scrolled
+  ? 'bg-white/80 backdrop-blur-md border-b border-slate-200 py-3'
+  : 'bg-white py-5';
+```
+
+**Balance chip**: `bg-emerald-50 text-emerald-700 rounded-full px-3 py-1 text-sm font-semibold`
+
+**Sign In button**: `border border-slate-200 text-slate-700 rounded-full px-4 py-2 text-sm hover:border-emerald-500 hover:text-emerald-600`
+
+**Join Now button**: `bg-emerald-500 text-white rounded-full px-4 py-2 text-sm font-semibold hover:bg-emerald-600`
+
+---
+
+### Hero Section Redesign (Req 25)
+
+**Component**: `src/components/HeroSection/HeroSection.jsx` (replace existing)
+
+**Layout**:
+```
+┌─────────────────────────────────────────────────────────────┐
+│  bg-slate-50 py-20 lg:py-32                                 │
+│                                                             │
+│  LEFT COLUMN                    RIGHT COLUMN                │
+│  ─────────────                  ─────────────               │
+│  "Shop Smart.                   ┌──────────────────────┐    │
+│   Earn Real                     │  Live Cashback  LIVE │    │
+│   Cashback."                    │  ─────────────────── │    │
+│                                 │  👤 ChatGPT  +₹300  │    │
+│  subtitle text                  │  👤 Notion   +₹180  │    │
+│                                 │  👤 Canva    +₹400  │    │
+│  [Explore Stores →]             └──────────────────────┘    │
+│                                                             │
+│  👤👤👤 +1L users saving today                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Live Activity card data source**: `transactions` prop (last 3 from `wallet.transactions`). If empty, show placeholder rows with merchant names from `MOCK_MERCHANTS` in `src/utils/mockData.js`.
+
+**Avatar circles**: 3 small overlapping `w-8 h-8 rounded-full bg-emerald-100` divs with initials.
+
+**"Cashback" word**: wrapped in `<span className="text-emerald-500">` inside the headline.
+
+**No floating badges** — removed in this redesign.
+
+---
+
+### Merchant Card Redesign (Req 26)
+
+**Component**: `src/components/MerchantCard/MerchantCard.jsx` (replace existing)
+
+**Key structural change — hover overlay**:
+```jsx
+<div className="... group relative overflow-hidden">
+  {/* Normal card content */}
+  <div className="...card body...">...</div>
+
+  {/* Hover overlay */}
+  <div className="absolute inset-0 bg-emerald-500 opacity-0 group-hover:opacity-100 
+                  transition-opacity rounded-3xl flex items-center justify-center">
+    <button className="bg-white text-emerald-600 font-bold px-6 py-3 rounded-full">
+      Shop Now →
+    </button>
+  </div>
+</div>
+```
+
+**Logo container**: `w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center overflow-hidden`
+
+**Cashback display**: `<p className="text-emerald-500 font-bold text-xl">Upto {cashbackRate}% Cashback</p>`
+
+**Offer tag**: `bg-emerald-50 text-emerald-700 text-xs font-semibold px-3 py-1 rounded-full`
+
+**Featured ribbon**: unchanged — `FEATURED_IDS.includes(merchant.id)` from `src/utils/offerTags.js`
+
+**Click logic**: unchanged — `GET /api/v1/merchants/{id}/click` → open URL
+
+---
+
+### Wallet Card Redesign (Req 27)
+
+**Component**: `src/components/WalletCard/WalletCard.jsx` (replace existing)
+
+**Layout**:
+```
+┌──────────────────────────────────────────────┐
+│  bg-white rounded-3xl border border-slate-200 │
+│  shadow-sm p-8                                │
+│                                               │
+│  💚 My Wallet                                 │
+│                                               │
+│  ₹10,000.00   ← text-5xl font-bold emerald   │
+│  Available for Payout                         │
+│                                               │
+│  [Total Earned: ₹12,500]  [Pending: ₹2,500]  │
+│   bg-emerald-50 text-emerald-700              │
+│                              bg-amber-50 text-amber-700 │
+└──────────────────────────────────────────────┘
+```
+
+**Count-up**: same `requestAnimationFrame` approach, targeting `available` value.
+
+**Skeleton**: single card-shaped shimmer, same dimensions as the card.
+
+**Error state**: `WifiOff` icon + "Could not load balance" — same as before, but on white card.
+
+---
+
+### Transaction History Redesign (Req 28)
+
+**Component**: `src/components/TransactionList/TransactionList.jsx` (replace existing)
+
+**Desktop layout** (table):
+```
+┌──────────────────────────────────────────────────────────────┐
+│  bg-white rounded-3xl border border-slate-200 overflow-hidden │
+│                                                              │
+│  MERCHANT    DATE    ORDER AMT    CASHBACK    STATUS         │  ← bg-slate-50 header
+│  ──────────────────────────────────────────────────────────  │
+│  ChatGPT     10 Mar  ₹1,999       ₹300       CONFIRMED      │  ← hover:bg-slate-50
+│  Notion      8 Mar   ₹1,499       ₹180       PENDING        │
+└──────────────────────────────────────────────────────────────┘
+```
+
+**Mobile layout** (cards): each transaction becomes a `bg-white rounded-2xl border border-slate-100 p-4` card with merchant + date on top row, amounts + status on bottom row.
+
+**Status badge classes**:
+```javascript
+const STATUS_STYLES = {
+  PENDING:   'bg-amber-50 text-amber-700',
+  CONFIRMED: 'bg-emerald-50 text-emerald-700',
+  REJECTED:  'bg-red-50 text-red-700',
+};
+```
+
+---
+
+### How It Works Redesign (Req 29)
+
+**Component**: `src/components/HowItWorks/HowItWorks.jsx` (replace existing)
+
+**Layout**:
+```
+bg-white py-24 border-y border-slate-200
+
+  Step 1              Step 2              Step 3
+  ① [Search icon]     ② [Click icon]      ③ [Wallet icon]
+  Find a Store        Click & Shop        Earn Cashback
+  Browse 500+         Click activate      Cashback lands
+  stores...           and shop...         in your wallet...
+```
+
+**Number circle**: `w-10 h-10 rounded-full bg-emerald-500 text-white font-bold flex items-center justify-center`
+
+**Animation**: same `IntersectionObserver` + `fadeInUp` CSS Module keyframe, staggered delays.
+
+---
+
+### Footer (Req 30)
+
+**Component**: `src/components/Footer/Footer.jsx` (new file)
+
+**Layout**:
+```
+bg-white py-20
+
+  [💚 Payback]          Platform    Categories    Support    Legal
+  India's #1 cashback   Merchants   AI Tools      Help       Privacy
+  platform for AI       Wallet      Productivity  Contact    Terms
+  tools & more.         Transactions Learning     Blog       Cookies
+
+  ─────────────────────────────────────────────────────────────────
+  © 2026 Payback India. All rights reserved.
+```
+
+**Column structure**: `grid grid-cols-2 md:grid-cols-5 gap-8`
+
+**Link style**: `text-slate-500 hover:text-emerald-600 transition-colors text-sm`
+
+**Logo**: same emerald Wallet icon + "Payback" text as Header
+
+---
+
+### Mobile Bottom Nav Update (Req 31)
+
+**Component**: `src/components/MobileBottomNav/MobileBottomNav.jsx` (update existing)
+
+**Only changes**:
+- Active tab: `text-emerald-500 border-t-2 border-emerald-500` (was `text-primary border-primary`)
+- Container: `border-t border-slate-200` (was `border-gray-200`)
+
+**No structural changes** — tabs, icons, scroll behavior all unchanged.
+
+---
+
+### Updated Component Hierarchy (Post-Redesign)
+
+```
+App
+├── ToastProvider
+├── Header              ← redesigned (scroll-aware, emerald)
+├── HeroSection         ← redesigned (two-column, Live Activity card)
+├── main
+│   ├── WalletCard      ← redesigned (white card, emerald balance)
+│   ├── CategoryPills   ← unchanged
+│   ├── MerchantGrid
+│   │   └── MerchantCard[]  ← redesigned (hover overlay, emerald)
+│   ├── TransactionList ← redesigned (clean table/card)
+│   └── HowItWorks      ← redesigned (white bg, emerald numbers)
+├── Footer              ← new
+└── MobileBottomNav     ← updated (emerald active state)
+```
+
+### New Correctness Properties
+
+**Property 19: Scroll-Aware Navbar**
+When `window.scrollY > 10`, the Header should have backdrop-blur and border-b classes applied; when at top, these should be absent.
+*Validates: Req 24.3*
+
+**Property 20: Live Activity Fallback**
+When the transactions array is empty, the Live Activity card should render exactly 3 placeholder rows.
+*Validates: Req 25.9*
+
+**Property 21: Hover Overlay Visibility**
+The MerchantCard hover overlay should have `opacity-0` by default and `group-hover:opacity-100` on hover.
+*Validates: Req 26.7*

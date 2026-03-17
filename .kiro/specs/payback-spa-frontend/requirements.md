@@ -284,3 +284,130 @@ The Payback SPA Frontend is a modern React-based single-page application that pr
 2. ALL components SHALL import from src/services/api.js — no raw fetch or axios calls inside components
 3. THE api.js SHALL read base URL from import.meta.env.VITE_API_URL with fallback to http://localhost:8080
 4. THE api.js SHALL use the existing configured Axios instance (no second Axios instance)
+
+---
+
+## Requirements: UI Redesign (REQ-023–031)
+
+### Requirement 23: Design System Reset
+
+**User Story:** As a user, I want a clean, modern interface using emerald and slate tones, so that the app feels fresh and trustworthy.
+
+#### Acceptance Criteria
+
+1. THE Frontend_Application SHALL replace the primary color token with emerald-500 (#10B981)
+2. THE Frontend_Application SHALL replace the background color with slate-50 (#F8FAFC)
+3. THE Frontend_Application SHALL use white as the surface/card color
+4. THE Frontend_Application SHALL use slate-900 as the primary text color and slate-500 as secondary text
+5. THE Frontend_Application SHALL use slate-200 as the default border color
+6. THE Frontend_Application SHALL replace Sora and DM Sans with Inter (loaded from Google Fonts in index.html)
+7. THE Frontend_Application SHALL update tailwind.config.js, index.css CSS custom properties, and index.html font link accordingly
+8. THE Frontend_Application SHALL NOT change any file in src/services/, src/context/, src/utils/merchantCategories.js, or src/utils/offerTags.js
+
+### Requirement 24: Navbar Redesign
+
+**User Story:** As a user, I want a sticky, polished navbar that adapts on scroll, so that navigation always feels accessible and premium.
+
+#### Acceptance Criteria
+
+1. THE Header SHALL be sticky with z-50
+2. THE Header default state SHALL be bg-white py-5
+3. WHEN the user scrolls down, THE Header SHALL transition to bg-white/80 backdrop-blur-md border-b border-slate-200 py-3
+4. THE Header left side SHALL display an emerald Wallet icon and "Payback" text in font-extrabold tracking-tight
+5. THE Header center SHALL display a search input with bg-slate-100, focus:border-emerald-500, rounded-2xl styling; hidden on mobile
+6. THE Header right side SHALL display a balance chip, a "Sign In" ghost button (rounded-full), and a "Join Now" emerald button (rounded-full)
+7. THE balance chip SHALL display the available balance fetched from GET /api/v1/wallet/1 using the existing App.jsx data flow
+8. THE Header SHALL NOT change any API call or data fetching logic
+
+### Requirement 25: Hero Section Redesign
+
+**User Story:** As a visitor, I want a two-column hero with a live activity card, so that I immediately see real cashback activity and feel confident.
+
+#### Acceptance Criteria
+
+1. THE HeroSection SHALL use a two-column layout on large screens (lg:grid-cols-2 gap-12) and single column on mobile
+2. THE left column SHALL display headline "Shop Smart. Earn Real Cashback." in text-5xl lg:text-7xl font-bold tracking-tight with "Cashback" in emerald-500
+3. THE left column SHALL display subtitle "Browse 500+ Indian stores, activate cashback in one click" in text-xl text-slate-500
+4. THE left column SHALL display a "Explore Stores →" CTA button in emerald with rounded-full and shadow-lg shadow-emerald-500/25
+5. THE left column SHALL display social proof text "+1L users saving today" with 3 overlapping avatar circles
+6. THE right column SHALL display a "Live Activity" card: bg-white rounded-[32px] shadow-2xl border border-slate-200 p-6
+7. THE Live Activity card SHALL display a "Live Cashback" header with a green "LIVE" badge
+8. THE Live Activity card SHALL show the last 3 transactions from the wallet transactions array (from GET /api/v1/wallet/1)
+9. IF no transactions exist, THE Live Activity card SHALL show 3 placeholder rows using top merchant names
+10. THE HeroSection SHALL NOT change any API call or data fetching logic
+
+### Requirement 26: Merchant Card Redesign
+
+**User Story:** As a user, I want merchant cards with a hover overlay, so that the interaction feels modern and engaging.
+
+#### Acceptance Criteria
+
+1. THE MerchantCard SHALL use bg-white rounded-3xl p-6 border border-slate-200 shadow-sm styling
+2. THE MerchantCard SHALL apply hover:shadow-xl hover:shadow-emerald-500/5 hover:-translate-y-1 transition-all on hover
+3. THE MerchantCard logo SHALL be w-16 h-16 rounded-2xl bg-slate-100 (image or letter fallback)
+4. THE MerchantCard SHALL display cashback as "Upto {cashbackRate}% Cashback" in text-emerald-500 font-bold text-xl
+5. THE MerchantCard offer tag SHALL use an emerald pill style
+6. THE MerchantCard SHALL keep the FEATURED_IDS gold ribbon logic from src/utils/offerTags.js unchanged
+7. THE MerchantCard SHALL display a hover overlay: absolute inset-0 bg-emerald-500 opacity-0 group-hover:opacity-100 rounded-3xl with a centered white "Shop Now" button
+8. THE MerchantCard click SHALL continue to call GET /api/v1/merchants/{id}/click and open the returned URL (existing logic unchanged)
+
+### Requirement 27: Wallet Card Redesign
+
+**User Story:** As a user, I want a clean white wallet card, so that my balance feels clear and prominent.
+
+#### Acceptance Criteria
+
+1. THE WalletCard SHALL replace the dark gradient with bg-white rounded-3xl border border-slate-200 shadow-sm p-8
+2. THE WalletCard SHALL display a Wallet icon and "My Wallet" heading
+3. THE WalletCard available balance SHALL be displayed as text-5xl font-bold text-emerald-500 with count-up animation
+4. THE WalletCard SHALL display two chips below the balance: "Total Earned: ₹X" in bg-emerald-50 text-emerald-700 and "Pending: ₹X" in bg-amber-50 text-amber-700
+5. THE WalletCard SHALL keep the existing GET /api/v1/wallet/1 data source, skeleton loader, and error state
+6. THE WalletCard error state SHALL continue to show WifiOff icon and "Could not load balance"
+
+### Requirement 28: Transaction History Redesign
+
+**User Story:** As a user, I want a clean transaction table, so that my history is easy to scan.
+
+#### Acceptance Criteria
+
+1. THE TransactionList section heading SHALL be "Transaction History" in font-bold text-2xl
+2. THE TransactionList container SHALL use bg-white rounded-3xl border border-slate-200 overflow-hidden
+3. THE TransactionList header row SHALL use bg-slate-50 text-xs font-bold uppercase tracking-widest text-slate-400
+4. THE TransactionList data rows SHALL apply hover:bg-slate-50 border-t border-slate-100
+5. THE PENDING status badge SHALL use bg-amber-50 text-amber-700 rounded-full px-3 py-1 text-xs font-bold
+6. THE CONFIRMED status badge SHALL use bg-emerald-50 text-emerald-700 rounded-full px-3 py-1 text-xs font-bold
+7. THE REJECTED status badge SHALL use bg-red-50 text-red-700 rounded-full px-3 py-1 text-xs font-bold
+8. ON mobile, THE TransactionList SHALL display a card layout instead of a table
+
+### Requirement 29: How It Works Redesign
+
+**User Story:** As a visitor, I want a clean, white How It Works section, so that the steps are easy to read.
+
+#### Acceptance Criteria
+
+1. THE HowItWorks section SHALL use bg-white py-24 border-y border-slate-200
+2. THE HowItWorks steps SHALL display emerald number circles alongside lucide icons, step title, and a short description
+3. THE HowItWorks layout SHALL be horizontal on desktop and vertical stack on mobile
+4. THE HowItWorks SHALL keep the existing IntersectionObserver fade-in-up animation
+
+### Requirement 30: Footer
+
+**User Story:** As a user, I want a professional footer, so that the app feels complete and trustworthy.
+
+#### Acceptance Criteria
+
+1. THE Frontend_Application SHALL include a Footer component with bg-white py-20
+2. THE Footer SHALL display a 5-column grid on desktop: logo+tagline, Platform, Categories, Support, Legal
+3. THE Footer links SHALL use text-slate-500 hover:text-emerald-600 transition-colors
+4. THE Footer bottom bar SHALL display a border-t border-slate-200 with "© 2026 Payback India. All rights reserved."
+5. THE Footer content SHALL use Indian market context (not US)
+
+### Requirement 31: Mobile Bottom Nav Update
+
+**User Story:** As a mobile user, I want the bottom nav to match the new emerald design system.
+
+#### Acceptance Criteria
+
+1. THE MobileBottomNav active tab SHALL use text-emerald-500 border-t-2 border-emerald-500
+2. THE MobileBottomNav SHALL use bg-white border-t border-slate-200 shadow-lg styling
+3. THE MobileBottomNav SHALL NOT change tab structure, icons, or scroll behavior

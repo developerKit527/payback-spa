@@ -8,7 +8,7 @@ import MerchantCard, { MerchantCardSkeleton } from '../MerchantCard';
 function MerchantGrid({ merchants, loading, onMerchantActivate }) {
   if (loading) {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6" data-testid="merchant-grid-skeleton">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6" data-testid="merchant-grid-skeleton">
         {Array.from({ length: 6 }).map((_, i) => (
           <MerchantCardSkeleton key={i} />
         ))}
@@ -26,7 +26,7 @@ function MerchantGrid({ merchants, loading, onMerchantActivate }) {
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6" data-testid="merchant-grid">
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6" data-testid="merchant-grid">
       {merchants.map((merchant) => (
         <MerchantCard
           key={merchant.id}

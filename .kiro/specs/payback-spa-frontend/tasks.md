@@ -442,3 +442,131 @@ This implementation plan breaks down the Payback SPA Frontend into discrete, inc
   - Verify responsive behavior: mobile bottom nav visible, desktop hidden
   - Verify primary color is #FF4D00 throughout (no Indigo-600 remnants)
   - Ask the user if questions arise before closing
+
+
+---
+
+## Tasks: UI Redesign (Requirements 23–31)
+
+- [ ] 26. Design system reset
+  - [ ] 26.1 Update color tokens and font
+    - Replace CSS custom properties in `index.css`: primary → #10B981, bg → #F8FAFC, surface → white, text → slate-900, text-muted → slate-500, border → slate-200
+    - Update `tailwind.config.js`: primary → #10B981, remove orange/navy tokens
+    - Replace Google Fonts link in `index.html`: remove Sora + DM Sans, add Inter
+    - Apply `font-family: 'Inter', sans-serif` to body in `index.css`
+    - DO NOT touch: src/services/api.js, src/context/ToastContext.jsx, src/utils/merchantCategories.js, src/utils/offerTags.js
+    - _Requirements: 23.1–23.8_
+
+- [ ] 27. Navbar redesign
+  - [ ] 27.1 Rewrite `src/components/Header/Header.jsx`
+    - Add `scrolled` state via `useEffect` scroll listener (`window.scrollY > 10`)
+    - Default: `bg-white py-5`; scrolled: `bg-white/80 backdrop-blur-md border-b border-slate-200 py-3`
+    - Left: emerald `<Wallet />` icon + "Payback" in font-extrabold tracking-tight
+    - Center: search input `bg-slate-100 rounded-2xl focus:border-emerald-500` — hidden on mobile
+    - Right: balance chip (`bg-emerald-50 text-emerald-700 rounded-full`) + "Sign In" ghost button + "Join Now" emerald button (both rounded-full)
+    - Keep existing `wallet` prop for balance display — no API changes
+    - _Requirements: 24.1–24.8_
+
+  - [ ]* 27.2 Update Header tests
+    - Test scrolled class applied when scrollY > 10
+    - Test balance chip renders with wallet prop
+    - Test Sign In and Join Now buttons render
+
+- [ ] 28. Hero section redesign
+  - [ ] 28.1 Rewrite `src/components/HeroSection/HeroSection.jsx`
+    - Two-column layout: `lg:grid-cols-2 gap-12` on large screens, single column on mobile
+    - Left: headline with "Cashback" in `text-emerald-500`, subtitle in `text-slate-500`, "Explore Stores →" emerald CTA, avatar social proof
+    - Right: Live Activity card (`bg-white rounded-[32px] shadow-2xl border border-slate-200 p-6`) with "Live Cashback" header + green "LIVE" badge
+    - Live Activity rows: last 3 from `transactions` prop; if empty, show 3 placeholder rows
+    - Remove floating badges and dark gradient background
+    - Accept `transactions` prop from App.jsx (already available as `walletData.transactions`)
+    - _Requirements: 25.1–25.10_
+
+  - [ ]* 28.2 Update HeroSection tests
+    - Test two-column layout classes present
+    - Test "Cashback" span has text-emerald-500
+    - Test Live Activity card renders
+    - Test placeholder rows shown when transactions empty
+
+- [ ] 29. Merchant card redesign
+  - [ ] 29.1 Rewrite `src/components/MerchantCard/MerchantCard.jsx`
+    - Container: `bg-white rounded-3xl p-6 border border-slate-200 shadow-sm group relative overflow-hidden`
+    - Hover: `hover:shadow-xl hover:shadow-emerald-500/5 hover:-translate-y-1 transition-all`
+    - Logo: `w-16 h-16 rounded-2xl bg-slate-100` (image or letter fallback — keep existing fallback logic)
+    - Cashback: `text-emerald-500 font-bold text-xl` "Upto {cashbackRate}% Cashback"
+    - Offer tag: `bg-emerald-50 text-emerald-700` pill (keep OFFER_TAGS logic)
+    - Featured ribbon: keep FEATURED_IDS logic unchanged
+    - Hover overlay: `absolute inset-0 bg-emerald-500 opacity-0 group-hover:opacity-100 rounded-3xl` with centered white "Shop Now" button
+    - Click logic: unchanged (GET /api/v1/merchants/{id}/click)
+    - _Requirements: 26.1–26.8_
+
+  - [ ]* 29.2 Update MerchantCard tests
+    - Test hover overlay element exists with opacity-0 class
+    - Test cashback uses text-emerald-500
+    - Test logo container has rounded-2xl bg-slate-100
+
+- [ ] 30. Wallet card redesign
+  - [ ] 30.1 Rewrite `src/components/WalletCard/WalletCard.jsx`
+    - Replace dark gradient with `bg-white rounded-3xl border border-slate-200 shadow-sm p-8`
+    - Add `<Wallet />` icon + "My Wallet" heading
+    - Available balance: `text-5xl font-bold text-emerald-500` with existing count-up animation
+    - Two chips: "Total Earned: ₹X" (`bg-emerald-50 text-emerald-700`) and "Pending: ₹X" (`bg-amber-50 text-amber-700`)
+    - Keep existing skeleton loader and WifiOff error state
+    - Keep existing `wallet`, `loading`, `error` props — no API changes
+    - _Requirements: 27.1–27.6_
+
+  - [ ]* 30.2 Update WalletCard tests
+    - Test bg-white card renders (not dark gradient)
+    - Test available balance has text-emerald-500
+    - Test Total Earned chip has bg-emerald-50
+    - Test Pending chip has bg-amber-50
+
+- [ ] 31. Transaction history redesign
+  - [ ] 31.1 Rewrite `src/components/TransactionList/TransactionList.jsx`
+    - Section heading: "Transaction History" `font-bold text-2xl`
+    - Container: `bg-white rounded-3xl border border-slate-200 overflow-hidden`
+    - Header row: `bg-slate-50 text-xs font-bold uppercase tracking-widest text-slate-400`
+    - Data rows: `hover:bg-slate-50 border-t border-slate-100`
+    - Status badges: PENDING → `bg-amber-50 text-amber-700`, CONFIRMED → `bg-emerald-50 text-emerald-700`, REJECTED → `bg-red-50 text-red-700`; all `rounded-full px-3 py-1 text-xs font-bold`
+    - Mobile: card layout per transaction instead of table
+    - _Requirements: 28.1–28.8_
+
+  - [ ]* 31.2 Update TransactionList tests
+    - Test CONFIRMED badge has bg-emerald-50 text-emerald-700
+    - Test PENDING badge has bg-amber-50 text-amber-700
+    - Test REJECTED badge has bg-red-50 text-red-700
+
+- [ ] 32. How It Works redesign
+  - [ ] 32.1 Rewrite `src/components/HowItWorks/HowItWorks.jsx`
+    - Section: `bg-white py-24 border-y border-slate-200`
+    - Each step: emerald number circle (`w-10 h-10 rounded-full bg-emerald-500 text-white`) + lucide icon + title + short description
+    - Keep IntersectionObserver fadeInUp animation from HowItWorks.module.css
+    - Horizontal desktop / vertical mobile layout unchanged
+    - _Requirements: 29.1–29.4_
+
+- [ ] 33. Footer
+  - [ ] 33.1 Create `src/components/Footer/Footer.jsx` and `Footer/index.js`
+    - `bg-white py-20`
+    - 5-column grid: logo+tagline | Platform | Categories | Support | Legal
+    - Links: `text-slate-500 hover:text-emerald-600 transition-colors text-sm`
+    - Bottom bar: `border-t border-slate-200` + "© 2026 Payback India. All rights reserved."
+    - Indian market content
+    - Import and render in App.jsx after `<HowItWorks />`
+    - _Requirements: 30.1–30.5_
+
+- [ ] 34. Mobile bottom nav update + final wiring
+  - [ ] 34.1 Update `src/components/MobileBottomNav/MobileBottomNav.jsx`
+    - Active tab: `text-emerald-500 border-t-2 border-emerald-500` (replace text-primary/border-primary)
+    - Container: `border-t border-slate-200` (replace border-gray-200)
+    - No other changes
+    - _Requirements: 31.1–31.3_
+
+  - [ ] 34.2 Pass `transactions` prop to HeroSection in App.jsx
+    - `<HeroSection transactions={transactions} />`
+    - No other App.jsx changes
+
+  - [ ] 34.3 Final checkpoint
+    - Run `npm test -- --run` — all tests pass
+    - Verify no Indigo-600 or orange (#FF4D00) remnants in components
+    - Verify no dark gradient (#1A1A2E) in WalletCard
+    - Verify Footer renders in App.jsx

@@ -5,6 +5,7 @@ import Header from './components/Header';
 import HeroSection from './components/HeroSection';
 import CategoryPills from './components/CategoryPills';
 import HowItWorks from './components/HowItWorks';
+import Footer from './components/Footer';
 import MobileBottomNav from './components/MobileBottomNav';
 import WalletCard, { WalletCardSkeleton } from './components/WalletCard';
 import MerchantGrid from './components/MerchantGrid';
@@ -78,19 +79,19 @@ function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-slate-50">
         <Header />
         {serverWaking && (
-          <div className="bg-amber-50 border-b border-amber-200 text-amber-800 text-sm text-center py-2 px-4">
+          <div className="bg-amber-50 border-b border-amber-200 text-amber-800 text-sm text-center py-2 px-8">
             ⏳ Waking up server, please wait a moment...
           </div>
         )}
         <HeroSection />
-        <main className="max-w-7xl mx-auto px-4 py-8">
+        <main className="w-full px-8 lg:px-16 py-12">
           <div className="mb-12">
             <WalletCardSkeleton />
           </div>
-          <div className="h-8 w-64 bg-gray-200 rounded mb-6 animate-pulse" />
+          <div className="h-8 w-64 bg-slate-200 rounded mb-6 animate-pulse" />
           <MerchantGrid merchants={[]} loading={true} onMerchantActivate={() => {}} />
         </main>
       </div>
@@ -99,12 +100,12 @@ function App() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-slate-50">
         <Header />
         <div className="flex items-center justify-center h-96">
           <div className="text-center p-8 bg-white rounded-2xl shadow-sm max-w-md">
             <p className="text-red-600 font-semibold text-lg mb-2">Something went wrong</p>
-            <p className="text-gray-600 text-sm">{error}</p>
+            <p className="text-slate-600 text-sm">{error}</p>
           </div>
         </div>
       </div>
@@ -112,32 +113,31 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-slate-50">
       <Header wallet={wallet} isAuthenticated={true} />
-      <HeroSection />
+      <HeroSection transactions={transactions} />
 
-      <main className="max-w-7xl mx-auto px-4 py-8 pb-20 md:pb-8">
-        {/* Page Title */}
-        <h1 className="text-4xl font-bold text-gray-900 mb-8">My Wallet</h1>
-        
-        {/* Wallet Card — unified */}
-        <div className="mb-12">
-          <WalletCard
-            wallet={wallet}
-            loading={loading}
-            error={error}
-          />
-        </div>
+      <main className="w-full px-8 lg:px-16 pb-20 md:pb-8">
+        {/* Wallet Section */}
+        <section className="bg-gradient-to-r from-emerald-50 via-white to-emerald-50 py-12 px-8 lg:px-16 -mx-8 lg:-mx-16">
+          <h1 className="text-3xl font-bold text-slate-900 mb-6">My Wallet</h1>
+          <WalletCard wallet={wallet} loading={loading} error={error} />
+        </section>
+
+        {/* Divider */}
+        <div className="h-px bg-gradient-to-r from-transparent via-emerald-200 to-transparent" />
 
         {/* Merchants Section */}
-        <div id="merchant-grid" className="mb-12">
-          <h2 className="font-heading text-3xl font-bold text-gray-900 mb-4">
-            Shop & Earn Cashback
+        <section id="merchant-grid" className="py-12">
+          <h2 className="text-3xl font-bold text-slate-900 mb-4">
+            Shop &amp; Earn Cashback
           </h2>
-          <CategoryPills
-            activeCategory={activeCategory}
-            onCategoryChange={setActiveCategory}
-          />
+          <div className="sticky top-[112px] z-40 bg-white border-b border-slate-200 py-3 -mx-8 lg:-mx-16 px-8 lg:px-16">
+            <CategoryPills
+              activeCategory={activeCategory}
+              onCategoryChange={setActiveCategory}
+            />
+          </div>
           <div className="mt-6">
             <MerchantGrid
               merchants={filteredMerchants}
@@ -145,19 +145,22 @@ function App() {
               onMerchantActivate={handleMerchantActivate}
             />
           </div>
-        </div>
+        </section>
 
         {/* Transaction History Section */}
-        <div>
-          <TransactionList
-            transactions={transactions}
-            loading={loading}
-          />
-        </div>
+        <section className="py-12">
+          <TransactionList transactions={transactions} loading={loading} />
+        </section>
+
+        {/* Divider */}
+        <div className="h-px bg-gradient-to-r from-transparent via-emerald-200 to-transparent" />
       </main>
 
       {/* How It Works */}
       <HowItWorks />
+
+      {/* Footer */}
+      <Footer />
 
       {/* Mobile Bottom Navigation */}
       <MobileBottomNav />

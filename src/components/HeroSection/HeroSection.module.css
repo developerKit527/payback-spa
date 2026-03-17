@@ -1,18 +1,20 @@
-/* ── Floating badge animation ───────────────────────────────── */
+/* ── Hero section — updated for Req 23 design system reset ─── */
+/* Full redesign comes in Task 28; this removes the old orange/navy gradient */
+
+.hero {
+  background: #F8FAFC;  /* slate-50 — matches new page bg */
+  position: relative;
+  overflow: hidden;
+  min-height: 420px;
+}
+
+/* Floating badge animation — kept for now, removed in Task 28 */
 @keyframes float {
   0%   { transform: translateY(0px); }
   50%  { transform: translateY(-12px); }
   100% { transform: translateY(0px); }
 }
 
-.hero {
-  background: linear-gradient(135deg, #1A1A2E 0%, #FF4D00 100%);
-  position: relative;
-  overflow: hidden;
-  min-height: 420px;
-}
-
-/* Base badge style — all badges are absolutely positioned */
 .badge {
   position: absolute;
   z-index: 1;

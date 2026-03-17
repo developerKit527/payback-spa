@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
-import { Search, User } from 'lucide-react';
+import { Search, User, Wallet } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatters';
 
 /**
@@ -10,42 +10,58 @@ import { formatCurrency } from '../../utils/formatters';
  * @param {boolean} props.isAuthenticated - Whether user is signed in
  */
 function Header({ wallet = null, isAuthenticated = false }) {
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 10);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
   return (
-    <header className="w-full sticky top-0 text-white shadow-md z-50" style={{ backgroundColor: '#1A1A2E' }}>
-      <div className="max-w-7xl mx-auto flex items-center justify-between h-16 px-6">
+    <header
+      className={`w-full sticky top-0 z-50 transition-all duration-200 bg-emerald-600 ${
+        scrolled ? 'shadow-lg' : 'shadow-md'
+      }`}
+      data-testid="header"
+    >
+      <div className="w-full flex items-center justify-between h-28 px-8 lg:px-16">
         {/* Logo */}
-        <div className="flex-shrink-0">
-          <h1 className="text-2xl font-bold text-white">
+        <div className="flex-shrink-0 flex items-center gap-3">
+          <Wallet className="h-9 w-9 text-white" />
+          <h1 className="text-4xl font-black tracking-tight text-white">
             Payback
           </h1>
         </div>
 
-        {/* Search Bar */}
-        <div className="flex-1 max-w-2xl mx-8">
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Search className="h-5 w-5 text-white/60" />
+        {/* Search Bar — hidden on mobile */}
+        <div className="hidden md:flex flex-1 max-w-2xl mx-8">
+          <div className="relative w-full">
+            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+              <Search className="h-5 w-5 text-white/70" />
             </div>
             <input
               type="text"
               placeholder="Search stores, brands, or categories..."
-              className="block w-full pl-10 pr-3 py-2 bg-white/10 border border-white/20 rounded-lg leading-5 text-white placeholder-white/60 focus:outline-none focus:bg-white/20 focus:border-white/40 transition-colors"
+              className="block w-full pl-11 pr-4 py-3.5 bg-white/20 border border-white/30 rounded-2xl text-lg text-white placeholder:text-white/70 focus:outline-none focus:bg-white focus:text-slate-900 focus:placeholder:text-slate-400 transition-all"
             />
           </div>
         </div>
 
-        {/* User Info */}
+        {/* Right — balance + auth buttons */}
         <div className="flex items-center gap-4">
           {wallet && (
-            <div className="hidden md:flex flex-col items-end">
-              <span className="text-xs text-white/80">Available Balance</span>
-              <span className="text-lg font-bold">{formatCurrency(wallet.available)}</span>
+            <div className="hidden md:flex items-center gap-2 bg-white/20 border border-white/30 rounded-full px-5 py-2.5">
+              <span className="text-base font-semibold text-white">
+                {formatCurrency(wallet.available)}
+              </span>
             </div>
           )}
-          
-          <button className="flex items-center gap-2 px-4 py-2 hover:bg-white/10 rounded-lg transition-colors">
-            <User className="h-5 w-5" />
-            <span className="hidden md:inline font-medium">Profile</span>
+          <button className="border border-white/50 text-white rounded-full px-6 py-3 text-base font-medium hover:bg-white/10 transition-colors">
+            Sign In
+          </button>
+          <button className="bg-white text-emerald-600 rounded-full px-6 py-3 text-base font-bold hover:bg-emerald-50 transition-colors">
+            Join Now
           </button>
         </div>
       </div>

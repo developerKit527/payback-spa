@@ -1,21 +1,21 @@
 /* Shimmer animation for skeleton loader */
 @keyframes shimmer {
-  0% { background-position: -400px 0; }
-  100% { background-position: 400px 0; }
+  0%   { background-position: -400px 0; }
+  100% { background-position:  400px 0; }
 }
 
 .shimmer {
-  background: linear-gradient(90deg, #2a2a4a 25%, #3a3a5a 50%, #2a2a4a 75%);
+  background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
   background-size: 800px 100%;
   animation: shimmer 1.4s infinite linear;
   border-radius: 8px;
 }
 
-/* Unified gradient wallet card */
+/* Wallet card — white redesign (REQ-027) */
 .walletCard {
-  background: linear-gradient(135deg, #1A1A2E 0%, #2D4A6E 100%);
+  background: white;
   border-radius: 1.5rem;
   padding: 2rem;
-  color: white;
-  box-shadow: 0 8px 32px rgba(26, 26, 46, 0.3);
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }

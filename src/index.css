@@ -1,28 +1,29 @@
 @import "tailwindcss";
 
-/* ── Design System Color Tokens ─────────────────────────────── */
+/* ── Design System Color Tokens (Req 23) ────────────────────── */
 :root {
-  --color-primary:   #FF4D00;  /* orange-red  — main CTA, badges  */
-  --color-secondary: #1A1A2E;  /* deep navy   — hero bg, card bg  */
-  --color-accent:    #FFD700;  /* gold        — featured ribbon   */
-  --color-success:   #10B981;  /* Emerald-500 — confirmed status  */
-  --color-warning:   #F59E0B;  /* Amber-500   — pending status    */
+  --color-primary:    #10B981;  /* emerald-500 — main CTA, active states  */
+  --color-bg:         #F8FAFC;  /* slate-50    — page background           */
+  --color-surface:    #FFFFFF;  /* white       — card surfaces             */
+  --color-text:       #0F172A;  /* slate-900   — primary text              */
+  --color-text-muted: #64748B;  /* slate-500   — secondary text            */
+  --color-border:     #E2E8F0;  /* slate-200   — default borders           */
+  --color-success:    #10B981;  /* emerald-500 — confirmed status          */
+  --color-warning:    #F59E0B;  /* amber-500   — pending status            */
 }
 
 /* ── Tailwind v4 theme tokens ───────────────────────────────── */
 @theme {
-  --color-primary:   #FF4D00;
-  --color-secondary: #1A1A2E;
-  --color-accent:    #FFD700;
-  --color-brand:     #CC3D00;
-  --color-success:   #10B981;
-  --color-warning:   #F59E0B;
+  --color-primary:    #10B981;
+  --color-secondary:  #0F172A;
+  --color-accent:     #FFD700;
+  --color-success:    #10B981;
+  --color-warning:    #F59E0B;
 
-  --font-family-heading: 'Sora', system-ui, sans-serif;
-  --font-family-body:    'DM Sans', system-ui, sans-serif;
+  --font-family-sans: 'Inter', system-ui, sans-serif;
 }
 
-/* ── Typography ─────────────────────────────────────────────── */
+/* ── Base typography ────────────────────────────────────────── */
 :root {
   line-height: 1.5;
   font-weight: 400;
@@ -32,11 +33,7 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background-color: #F9FAFB;
-  color: #111827;
-  font-family: 'DM Sans', system-ui, sans-serif;
-}
-
-h1, h2, h3, h4, h5, h6 {
-  font-family: 'Sora', system-ui, sans-serif;
+  background-color: #F8FAFC;
+  color: #0F172A;
+  font-family: 'Inter', system-ui, sans-serif;
 }

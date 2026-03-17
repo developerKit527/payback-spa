@@ -10,7 +10,8 @@ describe('Header', () => {
       
       expect(screen.getByText('Payback')).toBeInTheDocument();
       expect(screen.getByPlaceholderText(/Search stores/i)).toBeInTheDocument();
-      expect(screen.getByText('Profile')).toBeInTheDocument();
+      expect(screen.getByText('Sign In')).toBeInTheDocument();
+      expect(screen.getByText('Join Now')).toBeInTheDocument();
     });
 
     it('should display the logo', () => {
@@ -18,7 +19,7 @@ describe('Header', () => {
       
       const logo = screen.getByText('Payback');
       expect(logo).toHaveClass('text-white');
-      expect(logo).toHaveClass('font-bold');
+      expect(logo).toHaveClass('font-black');
     });
 
     it('should display search bar with placeholder', () => {
@@ -29,10 +30,11 @@ describe('Header', () => {
       expect(searchInput).toHaveAttribute('type', 'text');
     });
 
-    it('should display Profile button', () => {
+    it('should display Sign In and Join Now buttons', () => {
       render(<Header />);
       
-      expect(screen.getByText('Profile')).toBeInTheDocument();
+      expect(screen.getByText('Sign In')).toBeInTheDocument();
+      expect(screen.getByText('Join Now')).toBeInTheDocument();
     });
   });
 
@@ -46,7 +48,6 @@ describe('Header', () => {
       
       render(<Header wallet={wallet} />);
       
-      expect(screen.getByText('Available Balance')).toBeInTheDocument();
       expect(screen.getByText('₹500.00')).toBeInTheDocument();
     });
 
@@ -78,12 +79,11 @@ describe('Header', () => {
       expect(header).toHaveClass('top-0');
     });
 
-    it('should have dark navy background', () => {
+    it('should have emerald background', () => {
       const { container } = render(<Header />);
       
       const header = container.querySelector('header');
-      expect(header).toHaveStyle({ backgroundColor: '#1A1A2E' });
-      expect(header).toHaveClass('text-white');
+      expect(header).toHaveClass('bg-emerald-600');
     });
 
     it('should have shadow', () => {
@@ -113,7 +113,7 @@ describe('Header', () => {
       const { container } = render(<Header />);
       
       const searchInput = container.querySelector('input[type="text"]');
-      expect(searchInput).toHaveClass('bg-white/10');
+      expect(searchInput).toHaveClass('bg-white/20');
     });
   });
 });

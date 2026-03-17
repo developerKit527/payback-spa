@@ -25,6 +25,11 @@ describe('WalletCard', () => {
       expect(screen.getByText('Available for Payout')).toBeInTheDocument();
     });
 
+    it('should display "My Wallet" heading', () => {
+      render(<WalletCard wallet={defaultWallet} />);
+      expect(screen.getByText('My Wallet')).toBeInTheDocument();
+    });
+
     it('should display Total Earned and Pending labels', () => {
       render(<WalletCard wallet={defaultWallet} />);
       expect(screen.getByTestId('wallet-card-label-earned')).toHaveTextContent('Total Earned');
@@ -62,19 +67,19 @@ describe('WalletCard', () => {
   });
 
   describe('Color Classes', () => {
-    it('should apply success color to Total Earned', () => {
+    it('should apply emerald color to Total Earned', () => {
       render(<WalletCard wallet={defaultWallet} />);
-      expect(screen.getByTestId('wallet-card-earned')).toHaveClass('text-success');
+      expect(screen.getByTestId('wallet-card-earned')).toHaveClass('text-emerald-700');
     });
 
-    it('should apply warning color to Pending', () => {
+    it('should apply amber color to Pending', () => {
       render(<WalletCard wallet={defaultWallet} />);
-      expect(screen.getByTestId('wallet-card-pending')).toHaveClass('text-warning');
+      expect(screen.getByTestId('wallet-card-pending')).toHaveClass('text-amber-700');
     });
 
-    it('should display value in white text', () => {
+    it('should display value in emerald text', () => {
       render(<WalletCard wallet={defaultWallet} />);
-      expect(screen.getByTestId('wallet-card-value')).toHaveClass('text-white');
+      expect(screen.getByTestId('wallet-card-value')).toHaveClass('text-emerald-600');
     });
   });
 
