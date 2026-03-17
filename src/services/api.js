@@ -34,12 +34,43 @@ apiClient.interceptors.response.use(
 // API methods
 
 /**
- * Fetch wallet data for a user
- * @param {number} userId - The user ID
+ * Fetch wallet data.
+ * If token is provided, calls GET /wallet/me with Authorization header.
+ * Otherwise calls GET /wallet/1 as public fallback.
+ * @param {string|null} token - Optional JWT token
  * @returns {Promise} Wallet data
  */
-export const getWallet = async (userId) => {
-  const response = await apiClient.get(`/wallet/${userId}`);
+export const getWallet = async (token = null) => {
+  if (token) {
+    const response = await apiClient.get('/wallet/me', {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    return response.data;
+  }
+  const response = await apiClient.get('/wallet/1');
+  return response.data;
+};
+
+/**
+ * Register a new user
+ * @param {string} name
+ * @param {string} email
+ * @param {string} password
+ * @returns {Promise} { token, user }
+ */
+export const registerUser = async (name, email, password) => {
+  const response = await apiClient.post('/auth/register', { name, email, password });
+  return response.data;
+};
+
+/**
+ * Login an existing user
+ * @param {string} email
+ * @param {string} password
+ * @returns {Promise} { token, user }
+ */
+export const loginUser = async (email, password) => {
+  const response = await apiClient.post('/auth/login', { email, password });
   return response.data;
 };
 

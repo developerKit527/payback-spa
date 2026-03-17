@@ -1,16 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
-import { Search, User, Wallet } from 'lucide-react';
+import { Search, Wallet, LogOut } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatters';
+import { useAuth } from '../../context/AuthContext';
 
 /**
- * Header - Global navigation header component (Rakuten-style)
+ * Header - Global navigation header component
  * @param {Object} props
  * @param {Object} props.wallet - Wallet data for displaying balance
- * @param {boolean} props.isAuthenticated - Whether user is signed in
+ * @param {Function} props.onSignIn - Opens login modal
+ * @param {Function} props.onJoinNow - Opens register modal
  */
-function Header({ wallet = null, isAuthenticated = false }) {
+function Header({ wallet = null, onSignIn, onJoinNow }) {
   const [scrolled, setScrolled] = useState(false);
+  const { isAuthenticated, user, logout } = useAuth();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 10);
@@ -57,12 +60,36 @@ function Header({ wallet = null, isAuthenticated = false }) {
               </span>
             </div>
           )}
-          <button className="border border-white/50 text-white rounded-full px-6 py-3 text-base font-medium hover:bg-white/10 transition-colors">
-            Sign In
-          </button>
-          <button className="bg-white text-emerald-600 rounded-full px-6 py-3 text-base font-bold hover:bg-emerald-50 transition-colors">
-            Join Now
-          </button>
+
+          {isAuthenticated ? (
+            <>
+              <span className="bg-white/20 border border-white/30 text-white rounded-full px-5 py-2.5 text-base font-semibold">
+                Hi, {user?.firstName}
+              </span>
+              <button
+                onClick={logout}
+                aria-label="Logout"
+                className="text-white/80 hover:text-white transition-colors"
+              >
+                <LogOut className="w-6 h-6" />
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={onSignIn}
+                className="border border-white/50 text-white rounded-full px-6 py-3 text-base font-medium hover:bg-white/10 transition-colors"
+              >
+                Sign In
+              </button>
+              <button
+                onClick={onJoinNow}
+                className="bg-white text-emerald-600 rounded-full px-6 py-3 text-base font-bold hover:bg-emerald-50 transition-colors"
+              >
+                Join Now
+              </button>
+            </>
+          )}
         </div>
       </div>
     </header>
@@ -75,7 +102,8 @@ Header.propTypes = {
     totalEarned: PropTypes.number,
     pending: PropTypes.number,
   }),
-  isAuthenticated: PropTypes.bool,
+  onSignIn: PropTypes.func,
+  onJoinNow: PropTypes.func,
 };
 
 export default Header;

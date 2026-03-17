@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { getWallet, getMerchants, trackMerchantClick, getHealth } from './services/api';
 import { useToast } from './hooks/useToast';
+import { useAuth } from './context/AuthContext';
 import Header from './components/Header';
 import HeroSection from './components/HeroSection';
 import CategoryPills from './components/CategoryPills';
@@ -10,10 +11,13 @@ import MobileBottomNav from './components/MobileBottomNav';
 import WalletCard, { WalletCardSkeleton } from './components/WalletCard';
 import MerchantGrid from './components/MerchantGrid';
 import TransactionList from './components/TransactionList';
+import LoginModal from './components/AuthModal/LoginModal';
+import RegisterModal from './components/AuthModal/RegisterModal';
 import { MERCHANT_CATEGORIES } from './utils/merchantCategories';
 
 function App() {
   const { showToast } = useToast();
+  const { token, isAuthenticated } = useAuth();
   const [wallet, setWallet] = useState(null);
   const [merchants, setMerchants] = useState([]);
   const [transactions, setTransactions] = useState([]);
@@ -21,49 +25,51 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [serverWaking, setServerWaking] = useState(false);
+  const [authModal, setAuthModal] = useState(null); // 'login' | 'register' | null
   const wakingTimerRef = useRef(null);
 
   const filteredMerchants = activeCategory
     ? merchants.filter(m => MERCHANT_CATEGORIES[m.name] === activeCategory)
     : merchants;
 
+  const fetchData = useCallback(async () => {
+    try {
+      setLoading(true);
+
+      // Health check — show "waking up" banner if server doesn't respond within 3s
+      wakingTimerRef.current = setTimeout(() => setServerWaking(true), 3000);
+      await getHealth();
+      clearTimeout(wakingTimerRef.current);
+      setServerWaking(false);
+
+      // Pass token so authenticated users get /wallet/me, others get /wallet/1
+      const [walletData, merchantsData] = await Promise.all([
+        getWallet(token),
+        getMerchants()
+      ]);
+      setWallet(walletData);
+      setMerchants(merchantsData);
+      setTransactions(walletData.transactions || []);
+      setError(null);
+    } catch (err) {
+      clearTimeout(wakingTimerRef.current);
+      setServerWaking(false);
+      console.error('Failed to fetch data:', err);
+      setError(err.message);
+      showToast(err.message || 'Failed to load data', 'error');
+    } finally {
+      setLoading(false);
+    }
+  }, [token, showToast]);
+
+  // Re-fetch whenever auth state changes (login, logout, token restored)
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-
-        // Health check — show "waking up" banner if server doesn't respond within 3s
-        wakingTimerRef.current = setTimeout(() => setServerWaking(true), 3000);
-        await getHealth();
-        clearTimeout(wakingTimerRef.current);
-        setServerWaking(false);
-
-        const [walletData, merchantsData] = await Promise.all([
-          getWallet(1),
-          getMerchants()
-        ]);
-        setWallet(walletData);
-        setMerchants(merchantsData);
-        setTransactions(walletData.transactions || []);
-        setError(null);
-      } catch (err) {
-        clearTimeout(wakingTimerRef.current);
-        setServerWaking(false);
-        console.error('Failed to fetch data:', err);
-        setError(err.message);
-        showToast(err.message || 'Failed to load data', 'error');
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchData();
     return () => clearTimeout(wakingTimerRef.current);
-  }, []);
+  }, [isAuthenticated]);
 
   const handleMerchantActivate = async (merchantId) => {
     try {
-      // GET /api/v1/merchants/{id}/click — returns redirect URL in response
       const result = await trackMerchantClick(merchantId);
       const url = result?.redirectUrl || result?.url || result;
       if (!url || typeof url !== 'string') {
@@ -80,7 +86,7 @@ function App() {
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50">
-        <Header />
+        <Header onSignIn={() => setAuthModal('login')} onJoinNow={() => setAuthModal('register')} />
         {serverWaking && (
           <div className="bg-amber-50 border-b border-amber-200 text-amber-800 text-sm text-center py-2 px-8">
             ⏳ Waking up server, please wait a moment...
@@ -101,7 +107,7 @@ function App() {
   if (error) {
     return (
       <div className="min-h-screen bg-slate-50">
-        <Header />
+        <Header onSignIn={() => setAuthModal('login')} onJoinNow={() => setAuthModal('register')} />
         <div className="flex items-center justify-center h-96">
           <div className="text-center p-8 bg-white rounded-2xl shadow-sm max-w-md">
             <p className="text-red-600 font-semibold text-lg mb-2">Something went wrong</p>
@@ -114,7 +120,26 @@ function App() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <Header wallet={wallet} isAuthenticated={true} />
+      <Header
+        wallet={wallet}
+        onSignIn={() => setAuthModal('login')}
+        onJoinNow={() => setAuthModal('register')}
+      />
+
+      {/* Auth Modals */}
+      {authModal === 'login' && (
+        <LoginModal
+          onClose={() => setAuthModal(null)}
+          onSwitchToRegister={() => setAuthModal('register')}
+        />
+      )}
+      {authModal === 'register' && (
+        <RegisterModal
+          onClose={() => setAuthModal(null)}
+          onSwitchToLogin={() => setAuthModal('login')}
+        />
+      )}
+
       <HeroSection transactions={transactions} />
 
       <main className="w-full px-8 lg:px-16 pb-20 md:pb-8">
@@ -124,7 +149,6 @@ function App() {
           <WalletCard wallet={wallet} loading={loading} error={error} />
         </section>
 
-        {/* Divider */}
         <div className="h-px bg-gradient-to-r from-transparent via-emerald-200 to-transparent" />
 
         {/* Merchants Section */}
@@ -152,17 +176,11 @@ function App() {
           <TransactionList transactions={transactions} loading={loading} />
         </section>
 
-        {/* Divider */}
         <div className="h-px bg-gradient-to-r from-transparent via-emerald-200 to-transparent" />
       </main>
 
-      {/* How It Works */}
       <HowItWorks />
-
-      {/* Footer */}
       <Footer />
-
-      {/* Mobile Bottom Navigation */}
       <MobileBottomNav />
     </div>
   );

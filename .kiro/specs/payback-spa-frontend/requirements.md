@@ -411,3 +411,74 @@ The Payback SPA Frontend is a modern React-based single-page application that pr
 1. THE MobileBottomNav active tab SHALL use text-emerald-500 border-t-2 border-emerald-500
 2. THE MobileBottomNav SHALL use bg-white border-t border-slate-200 shadow-lg styling
 3. THE MobileBottomNav SHALL NOT change tab structure, icons, or scroll behavior
+
+---
+
+## Requirements: Auth Pages (REQ-032–037)
+
+### Requirement 32: Auth API Methods
+
+**User Story:** As a developer, I want centralized auth API calls, so that login and register use the same api.js pattern as other endpoints.
+
+#### Acceptance Criteria
+
+1. THE api.js SHALL export `registerUser(name, email, password)` that sends POST to `/api/v1/auth/register`
+2. THE api.js SHALL export `loginUser(email, password)` that sends POST to `/api/v1/auth/login`
+3. THE `getWallet` function SHALL accept an optional `token` parameter; if token is provided, it SHALL call `GET /api/v1/wallet/me` with an `Authorization: Bearer {token}` header; if no token is provided, it SHALL call `GET /api/v1/wallet/1`
+
+### Requirement 33: Auth Context
+
+**User Story:** As a developer, I want global auth state, so that any component knows if the user is logged in.
+
+#### Acceptance Criteria
+
+1. THE Frontend_Application SHALL provide an `AuthContext` exposing: `user`, `token`, `isAuthenticated`, `login()`, `register()`, `logout()`
+2. ON mount, `AuthContext` SHALL read the token from `localStorage` key `'payback_token'`
+3. ON successful login or register, the token SHALL be saved to `localStorage` under key `'payback_token'`
+4. ON logout, `localStorage` SHALL be cleared and auth state SHALL be reset to unauthenticated
+5. THE JWT payload SHALL be decoded client-side using `atob()` to extract user info (no external JWT library)
+
+### Requirement 34: Login Modal
+
+**User Story:** As a user, I want a login modal, so that I can sign in without leaving the page.
+
+#### Acceptance Criteria
+
+1. THE "Sign In" button in the navbar SHALL open a modal overlay (not navigate to a new page)
+2. THE Login modal SHALL contain email and password fields with a show/hide password toggle
+3. WHEN login succeeds, the modal SHALL close and a toast SHALL display "Welcome back!"
+4. WHEN login fails, the modal SHALL display an inline error message "Invalid email or password"
+5. THE Login modal SHALL include a link to switch to the Register modal
+
+### Requirement 35: Register Modal
+
+**User Story:** As a new user, I want a register modal, so that I can create an account without leaving the page.
+
+#### Acceptance Criteria
+
+1. THE "Join Now" button in the navbar SHALL open a modal overlay (not navigate to a new page)
+2. THE Register modal SHALL contain name, email, password, and confirm password fields
+3. CLIENT-SIDE validation SHALL enforce: name minimum 2 characters, password minimum 6 characters, passwords must match
+4. WHEN registration succeeds, the modal SHALL close and a toast SHALL display "Welcome to Payback!"
+5. WHEN registration fails, the modal SHALL display an inline error from the API response
+6. THE Register modal SHALL include a link to switch to the Login modal
+
+### Requirement 36: Authenticated Navbar State
+
+**User Story:** As a logged-in user, I want the navbar to show my name and a logout button, so that I know I am signed in.
+
+#### Acceptance Criteria
+
+1. WHEN `isAuthenticated` is true, the navbar SHALL display a "Hi, {firstName}" chip and a logout icon button
+2. WHEN `isAuthenticated` is false, the navbar SHALL display the "Sign In" ghost button and the "Join Now" emerald button
+3. WHEN the user clicks logout, the token SHALL be cleared, auth state SHALL be reset, and a toast SHALL display "Logged out successfully"
+
+### Requirement 37: Authenticated Wallet Fetching
+
+**User Story:** As a logged-in user, I want my personal wallet data, so that I see my own balance not a hardcoded user.
+
+#### Acceptance Criteria
+
+1. WHEN `isAuthenticated` is true, `App.jsx` SHALL fetch `GET /api/v1/wallet/me` with the JWT token in the `Authorization` header
+2. WHEN `isAuthenticated` is false, `App.jsx` SHALL fetch `GET /api/v1/wallet/1` as a public fallback
+3. `App.jsx` SHALL re-fetch wallet data whenever the auth state changes (login, logout, or token restored from localStorage)

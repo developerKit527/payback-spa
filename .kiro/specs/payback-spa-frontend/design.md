@@ -1467,3 +1467,285 @@ When the transactions array is empty, the Live Activity card should render exact
 **Property 21: Hover Overlay Visibility**
 The MerchantCard hover overlay should have `opacity-0` by default and `group-hover:opacity-100` on hover.
 *Validates: Req 26.7*
+
+
+---
+
+## Design Additions: Auth Pages (Requirements 32–37)
+
+### Auth API Methods (Req 32)
+
+**File**: `src/services/api.js` (additions only — no second Axios instance)
+
+```javascript
+// POST /api/v1/auth/register
+export const registerUser = async (name, email, password) => {
+  const response = await apiClient.post('/auth/register', { name, email, password });
+  return response.data; // { token, user }
+};
+
+// POST /api/v1/auth/login
+export const loginUser = async (email, password) => {
+  const response = await apiClient.post('/auth/login', { email, password });
+  return response.data; // { token, user }
+};
+```
+
+**Updated `getWallet`**:
+```javascript
+export const getWallet = async (token = null) => {
+  if (token) {
+    const response = await apiClient.get('/wallet/me', {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    return response.data;
+  }
+  const response = await apiClient.get('/wallet/1');
+  return response.data;
+};
+```
+
+---
+
+### Auth Context (Req 33)
+
+**File**: `src/context/AuthContext.jsx`
+
+**Context shape**:
+```javascript
+{
+  user: { id, name, email, firstName } | null,
+  token: string | null,
+  isAuthenticated: boolean,
+  login: (email, password) => Promise<void>,
+  register: (name, email, password) => Promise<void>,
+  logout: () => void
+}
+```
+
+**JWT decode** (no library — uses `atob`):
+```javascript
+const decodeToken = (token) => {
+  try {
+    const payload = token.split('.')[1];
+    return JSON.parse(atob(payload));
+  } catch {
+    return null;
+  }
+};
+```
+
+**Initialization** (on mount):
+```javascript
+useEffect(() => {
+  const stored = localStorage.getItem('payback_token');
+  if (stored) {
+    const decoded = decodeToken(stored);
+    if (decoded) {
+      setToken(stored);
+      setUser({ ...decoded, firstName: decoded.name?.split(' ')[0] });
+    }
+  }
+}, []);
+```
+
+**`login()` flow**:
+1. Call `loginUser(email, password)` from api.js
+2. Save token to `localStorage('payback_token')`
+3. Decode JWT → set `user` and `token` state
+
+**`register()` flow**: same as login but calls `registerUser(name, email, password)`
+
+**`logout()` flow**:
+1. `localStorage.removeItem('payback_token')`
+2. Set `user = null`, `token = null`
+
+**Provider**: in `main.jsx`, `<ToastProvider>` is the outer wrapper so `AuthContext` can call `showToast` during logout:
+```jsx
+<ToastProvider>
+  <AuthProvider>
+    <App />
+  </AuthProvider>
+</ToastProvider>
+```
+
+---
+
+### Login Modal (Req 34)
+
+**File**: `src/components/AuthModal/LoginModal.jsx`
+
+**Trigger**: "Sign In" button in `Header.jsx` calls `setAuthModal('login')` (state lifted to App or via context).
+
+**Layout**:
+```
+┌──────────────────────────────────────┐
+│  Sign In                         [×] │
+│                                      │
+│  Email ________________________      │
+│  Password [__________________] 👁    │
+│                                      │
+│  [inline error if failed]            │
+│                                      │
+│  [Sign In]  (full-width emerald btn) │
+│                                      │
+│  Don't have an account? Join Now →   │
+└──────────────────────────────────────┘
+```
+
+**Modal overlay**: `fixed inset-0 bg-black/50 z-50 flex items-center justify-center`
+
+**Card**: `bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl`
+
+**Show/hide password**: local `showPassword` boolean state; toggles `type="password"` / `type="text"` and eye icon.
+
+**On submit**:
+1. Call `auth.login(email, password)`
+2. On success: close modal + `showToast('Welcome back!', 'success')`
+3. On failure: set inline error `"Invalid email or password"`
+
+**Switch link**: clicking "Join Now →" closes Login modal and opens Register modal.
+
+---
+
+### Register Modal (Req 35)
+
+**File**: `src/components/AuthModal/RegisterModal.jsx`
+
+**Trigger**: "Join Now" button in `Header.jsx` calls `setAuthModal('register')`.
+
+**Layout**:
+```
+┌──────────────────────────────────────┐
+│  Create Account                  [×] │
+│                                      │
+│  Name   ________________________     │
+│  Email  ________________________     │
+│  Password [__________________] 👁    │
+│  Confirm  [__________________] 👁    │
+│                                      │
+│  [inline error if failed]            │
+│                                      │
+│  [Create Account]  (emerald btn)     │
+│                                      │
+│  Already have an account? Sign In →  │
+└──────────────────────────────────────┘
+```
+
+**Client-side validation** (run before API call):
+- `name.trim().length >= 2`
+- `password.length >= 6`
+- `password === confirmPassword`
+
+**On submit**:
+1. Run client-side validation; show inline error if invalid
+2. Call `auth.register(name, email, password)`
+3. On success: close modal + `showToast('Welcome to Payback!', 'success')`
+4. On failure: show inline error from API response message
+
+**Switch link**: clicking "Sign In →" closes Register modal and opens Login modal.
+
+---
+
+### Authenticated Navbar State (Req 36)
+
+**Changes to `src/components/Header/Header.jsx`**:
+
+The Header receives `isAuthenticated`, `user`, and `onLogout` props (or reads from `AuthContext` directly).
+
+**Unauthenticated state** (existing):
+```jsx
+<button onClick={() => setAuthModal('login')}>Sign In</button>
+<button onClick={() => setAuthModal('register')}>Join Now</button>
+```
+
+**Authenticated state**:
+```jsx
+<span className="bg-emerald-50 text-emerald-700 rounded-full px-3 py-1 text-sm font-semibold">
+  Hi, {user.firstName}
+</span>
+<button onClick={auth.logout} aria-label="Logout">
+  <LogOut className="w-5 h-5 text-slate-500 hover:text-red-500" />
+</button>
+```
+
+**Logout side-effect** (in `AuthContext.logout`): after clearing state, call `showToast('Logged out successfully', 'info')`.
+
+---
+
+### Authenticated Wallet Fetching (Req 37)
+
+**Changes to `App.jsx`**:
+
+```javascript
+const { token, isAuthenticated } = useAuth();
+
+useEffect(() => {
+  fetchData();
+}, [isAuthenticated]); // re-fetch when auth state changes
+
+const fetchData = async () => {
+  // getWallet now accepts optional token
+  const walletData = await getWallet(token); // passes token if authenticated
+  // ...rest of fetch logic unchanged
+};
+```
+
+**`getWallet` routing** (already defined in Req 32 design):
+- `token` present → `GET /api/v1/wallet/me` with `Authorization: Bearer {token}`
+- no `token` → `GET /api/v1/wallet/1`
+
+---
+
+### Modal State Management
+
+Modal open/close state is managed in `App.jsx` (or a dedicated `useModal` hook):
+
+```javascript
+const [authModal, setAuthModal] = useState(null); // 'login' | 'register' | null
+```
+
+`Header` receives `onSignIn` and `onJoinNow` callbacks that set `authModal`. `LoginModal` and `RegisterModal` receive `onClose` and `onSwitch` props.
+
+---
+
+### Updated Component Hierarchy (Post-Auth)
+
+```
+ToastProvider           ← outer (so AuthContext can call showToast)
+└── AuthProvider
+    └── App
+        ├── Header              ← auth-aware (Hi chip / Sign In / Join Now)
+├── LoginModal          ← new (conditional render when authModal === 'login')
+├── RegisterModal       ← new (conditional render when authModal === 'register')
+├── HeroSection
+├── main
+│   ├── WalletCard      ← fetches /wallet/me when authenticated
+│   ├── CategoryPills
+│   ├── MerchantGrid
+│   │   └── MerchantCard[]
+│   ├── TransactionList
+│   └── HowItWorks
+├── Footer
+└── MobileBottomNav
+```
+
+---
+
+### New Correctness Properties (Auth)
+
+**Property 22: Token Persistence**
+After a successful login or register, `localStorage.getItem('payback_token')` SHALL return the token received from the API. After logout, it SHALL return `null`.
+*Validates: Req 33.3, 33.4*
+
+**Property 23: Auth State Hydration**
+On mount, if `localStorage` contains a valid JWT under `'payback_token'`, `isAuthenticated` SHALL be `true` and `user.firstName` SHALL be derived from the decoded payload.
+*Validates: Req 33.2, 33.5*
+
+**Property 24: Wallet Endpoint Routing**
+For any call to `getWallet`, if a non-null token is passed the request URL SHALL be `/wallet/me` with an Authorization header; if token is null/undefined the URL SHALL be `/wallet/1` with no Authorization header.
+*Validates: Req 32.3, 37.1, 37.2*
+
+**Property 25: Register Validation**
+For any combination of name (length < 2), password (length < 6), or mismatched confirm password, the Register modal SHALL display an inline error and SHALL NOT call the API.
+*Validates: Req 35.3*
