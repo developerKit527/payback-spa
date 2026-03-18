@@ -32,10 +32,10 @@ export function MerchantCardSkeleton() {
 }
 
 /**
- * MerchantCard - Navigates to merchant detail page for authenticated users,
- * opens login modal for guests.
+ * MerchantCard - Navigates to merchant detail page for all users.
+ * Authenticated users trigger click tracking first; guests navigate directly.
  */
-function MerchantCard({ merchant, onSignIn }) {
+function MerchantCard({ merchant }) {
   const [isActivating, setIsActivating] = useState(false);
   const [imageError, setImageError] = useState(false);
   const navigate = useNavigate();
@@ -43,15 +43,11 @@ function MerchantCard({ merchant, onSignIn }) {
 
   const handleClick = async () => {
     if (isActivating) return;
-
-    if (!isAuthenticated) {
-      onSignIn?.();
-      return;
-    }
-
     setIsActivating(true);
     try {
-      await trackMerchantClick(merchant.id).catch(() => {});
+      if (isAuthenticated) {
+        await trackMerchantClick(merchant.id).catch(() => {});
+      }
       navigate(`/merchants/${merchant.id}`);
     } finally {
       setIsActivating(false);
@@ -145,11 +141,6 @@ MerchantCard.propTypes = {
     cashbackRate: PropTypes.number.isRequired,
     manualTrackingUrl: PropTypes.string,
   }).isRequired,
-  onSignIn: PropTypes.func,
-};
-
-MerchantCard.defaultProps = {
-  onSignIn: () => {},
 };
 
 export default MerchantCard;

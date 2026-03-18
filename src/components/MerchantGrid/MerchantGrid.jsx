@@ -5,7 +5,7 @@ import MerchantCard, { MerchantCardSkeleton } from '../MerchantCard';
 /**
  * MerchantGrid - Responsive grid of merchant cards with shimmer loading state
  */
-function MerchantGrid({ merchants, loading, onSignIn }) {
+function MerchantGrid({ merchants, loading }) {
   if (loading) {
     return (
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6" data-testid="merchant-grid-skeleton">
@@ -31,7 +31,6 @@ function MerchantGrid({ merchants, loading, onSignIn }) {
         <MerchantCard
           key={merchant.id}
           merchant={merchant}
-          onSignIn={onSignIn}
         />
       ))}
     </div>
@@ -47,13 +46,11 @@ MerchantGrid.propTypes = {
     })
   ),
   loading: PropTypes.bool,
-  onSignIn: PropTypes.func,
 };
 
 MerchantGrid.defaultProps = {
   merchants: [],
   loading: false,
-  onSignIn: () => {},
 };
 
 export default MerchantGrid;

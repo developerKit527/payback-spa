@@ -16,6 +16,13 @@ vi.mock('../../services/api', () => ({
   trackMerchantClick: vi.fn().mockResolvedValue({}),
 }));
 
+// Capture navigate calls
+const mockNavigate = vi.fn();
+vi.mock('react-router-dom', async (importOriginal) => {
+  const actual = await importOriginal();
+  return { ...actual, useNavigate: () => mockNavigate };
+});
+
 function renderCard(merchant, props = {}) {
   return render(
     <MemoryRouter>
@@ -37,6 +44,7 @@ describe('MerchantCard', () => {
 
   beforeEach(() => {
     mockOnSignIn.mockClear();
+    mockNavigate.mockClear();
     trackMerchantClick.mockClear();
     trackMerchantClick.mockResolvedValue({});
     // Reset to authenticated by default
@@ -116,18 +124,29 @@ describe('MerchantCard', () => {
   });
 
   describe('Button Interaction', () => {
-    it('calls onSignIn when Shop Now button is clicked and user is not authenticated', async () => {
+    it('navigates to merchant detail page when guest clicks Shop Now', async () => {
       mockAuthState.isAuthenticated = false;
       mockAuthState.token = null;
-      renderCard(mockMerchant, { onSignIn: mockOnSignIn });
+      renderCard(mockMerchant);
       fireEvent.click(screen.getByTestId('shop-earn-button'));
-      await waitFor(() => expect(mockOnSignIn).toHaveBeenCalled());
+      await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/merchants/1'));
+      expect(trackMerchantClick).not.toHaveBeenCalled();
+    });
+
+    it('calls trackMerchantClick and navigates when authenticated user clicks Shop Now', async () => {
+      mockAuthState.isAuthenticated = true;
+      mockAuthState.token = 'test-token';
+      renderCard(mockMerchant);
+      fireEvent.click(screen.getByTestId('shop-earn-button'));
+      await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/merchants/1'));
+      expect(trackMerchantClick).toHaveBeenCalledWith(mockMerchant.id);
     });
 
     it('navigates to merchant page when authenticated and Shop Now is clicked', async () => {
       renderCard(mockMerchant);
       const button = screen.getByTestId('shop-earn-button');
       fireEvent.click(button);
+      await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/merchants/1'));
       // Button should not be permanently disabled after click
       await waitFor(() => expect(button).not.toBeDisabled());
     });

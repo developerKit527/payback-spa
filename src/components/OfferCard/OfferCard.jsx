@@ -1,7 +1,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 
-function OfferCard({ offer, onActivate }) {
+function OfferCard({ offer, onActivate, disabled }) {
   return (
     <div className="bg-white border border-slate-200 rounded-2xl p-5 flex flex-col gap-3 hover:shadow-md hover:border-emerald-200 transition-all">
       <div className="flex items-start justify-between gap-3">
@@ -19,7 +19,8 @@ function OfferCard({ offer, onActivate }) {
       </div>
       <button
         onClick={() => onActivate(offer)}
-        className="w-full bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-bold py-2.5 px-4 rounded-full transition-colors"
+        disabled={disabled}
+        className="w-full bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-bold py-2.5 px-4 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         aria-label={`Activate deal: ${offer.title}`}
       >
         Activate Deal →
@@ -37,6 +38,7 @@ OfferCard.propTypes = {
     affiliateUrl: PropTypes.string,
   }).isRequired,
   onActivate: PropTypes.func.isRequired,
+  disabled: PropTypes.bool,
 };
 
 export default OfferCard;

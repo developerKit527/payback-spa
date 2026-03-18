@@ -668,3 +668,68 @@ The Payback SPA Frontend is a modern React-based single-page application that pr
 2. WHEN a guest user clicks "Shop Now" on a MerchantCard, THE app SHALL open the Login modal
 3. THE existing click tracking `GET /api/v1/merchants/{id}/click` SHALL still be called when navigating to merchant page
 4. THE MerchantCard SHALL use react-router-dom `useNavigate` hook for navigation
+
+---
+
+## Requirements: Guest Navigation, Duplicate Prevention, Wallet Refresh, Admin Page (REQ-049–052)
+
+### Requirement 49: Guest Merchant Navigation
+
+**User Story:** As a guest user, I want to browse a merchant's detail page without logging in, so that I can see cashback rates and categories before deciding to sign up.
+
+#### Acceptance Criteria
+
+1. WHEN a guest user clicks "Shop Now" on any MerchantCard, THE app SHALL navigate directly to `/merchants/{id}` without showing a login modal
+2. THE login modal SHALL only appear when a guest tries to activate cashback or click a category on the merchant detail page
+3. IF the user is authenticated, `trackMerchantClick` SHALL still be called before navigating
+4. IF the user is a guest, `trackMerchantClick` SHALL NOT be called
+5. THE `onSignIn` prop SHALL be removed from MerchantCard as it is no longer needed
+
+### Requirement 50: Duplicate Transaction Prevention
+
+**User Story:** As a user, I want to be prevented from creating duplicate transactions by accidentally clicking multiple times, so that my transaction history stays clean.
+
+#### Acceptance Criteria
+
+1. THE MerchantDetailPage SHALL track an `isActivating` boolean state
+2. WHILE `isActivating` is true, ALL category and offer click handlers SHALL return early without making API calls
+3. ALL category card buttons and offer activate buttons SHALL be disabled while `isActivating` is true
+4. `isActivating` SHALL be set to `false` in a `finally` block after each transaction attempt completes
+
+### Requirement 51: Wallet Auto-Refresh After Transaction
+
+**User Story:** As a user, I want my wallet balance to update automatically after I activate cashback, so that I can see my pending cashback immediately.
+
+#### Acceptance Criteria
+
+1. AFTER a successful `createTransaction` call on the merchant detail page, THE app SHALL dispatch a custom browser event `walletUpdated`
+2. `App.jsx` SHALL listen for the `walletUpdated` event via `useEffect` and re-fetch wallet data using `getWallet(token)`
+3. AFTER re-fetch, `walletData` and `transactions` state in `App.jsx` SHALL be updated
+4. THE event listener SHALL be cleaned up when the component unmounts
+5. THIS SHALL work for both category clicks and offer clicks on the merchant detail page
+
+### Requirement 52: Admin Transaction Management Page
+
+**User Story:** As an admin, I want a simple password-protected page to confirm or reject transactions, so that I can manage cashback without using curl commands.
+
+#### Acceptance Criteria
+
+1. THE Frontend_Application SHALL add a new route `/admin` pointing to `AdminPage`
+2. THE `AdminPage` SHALL show a password input on first load
+3. THE correct password SHALL be `payback@admin2026` (hardcoded for MVP)
+4. AFTER correct password entered, THE page SHALL fetch and display all transactions from `GET /api/v1/transactions/me` using the authenticated user's JWT
+5. EACH transaction row SHALL display: `id`, `merchantName`, `orderAmount`, `cashbackAmount`, `status`, `createdAt`
+6. EACH PENDING transaction SHALL show two buttons: Confirm (emerald) and Reject (red)
+7. WHEN Confirm is clicked, THE app SHALL call `PUT /api/v1/transactions/{id}/status` with `{ status: CONFIRMED }`
+8. WHEN Reject is clicked, THE app SHALL call `PUT /api/v1/transactions/{id}/status` with `{ status: REJECTED }`
+9. AFTER status update, THE transactions list SHALL refresh
+10. `updateTransactionStatus(transactionId, status, token)` SHALL be added as a new export to `src/services/api.js`
+11. THE `AdminPage` SHALL use the existing emerald/slate design system
+12. CONSTRAINTS:
+    - Do NOT change `src/services/api.js` base config or existing exports
+    - Do NOT change `src/context/ToastContext.jsx`
+    - Do NOT change `src/context/AuthContext.jsx`
+    - Do NOT change any existing test files
+    - Do NOT change `src/utils/merchantCategories.js` or `src/utils/offerTags.js`
+    - Admin page reads JWT token from `useAuth()` hook — no separate auth system
+    - Keep existing wallet state variable names in `App.jsx`

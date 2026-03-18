@@ -70,6 +70,19 @@ function App() {
     return () => clearTimeout(wakingTimerRef.current);
   }, [isAuthenticated]);
 
+  // Listen for walletUpdated events dispatched by MerchantDetailPage after transactions
+  useEffect(() => {
+    const handleWalletUpdated = async () => {
+      try {
+        const updated = await getWallet(token);
+        setWallet(updated);
+        setTransactions(updated.transactions || []);
+      } catch { /* non-critical */ }
+    };
+    window.addEventListener('walletUpdated', handleWalletUpdated);
+    return () => window.removeEventListener('walletUpdated', handleWalletUpdated);
+  }, [token]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50">
@@ -85,7 +98,10 @@ function App() {
             <WalletCardSkeleton />
           </div>
           <div className="h-8 w-64 bg-slate-200 rounded mb-6 animate-pulse" />
-          <MerchantGrid merchants={[]} loading={true} onSignIn={() => setAuthModal('login')} />
+          <MerchantGrid
+              merchants={[]}
+              loading={true}
+            />
         </main>
       </div>
     );
@@ -179,7 +195,6 @@ function App() {
             <MerchantGrid
               merchants={filteredMerchants}
               loading={loading}
-              onSignIn={() => setAuthModal('login')}
             />
           </div>
         </section>

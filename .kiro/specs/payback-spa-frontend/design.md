@@ -2255,3 +2255,210 @@ For any category or offer click where `isAuthenticated` is `false` or `token` is
 **Property 29: Merchant 404 Handling**
 When `getMerchantById` rejects with a 404 error for any merchant ID, the MerchantDetailPage SHALL render the 404 message state and SHALL NOT throw an unhandled exception or render a blank page.
 *Validates: Req 44.6*
+
+
+---
+
+## Design Additions: Guest Navigation, Duplicate Prevention, Wallet Refresh, Admin Page (Requirements 49–52)
+
+### Guest Merchant Navigation (Req 49)
+
+**File**: `src/components/MerchantCard/MerchantCard.jsx`
+
+**Change**: Remove the auth-gate on the "Shop Now" click. Both guests and authenticated users navigate to `/merchants/:id`. Only authenticated users trigger `trackMerchantClick` first.
+
+```javascript
+const handleClick = async () => {
+  if (isAuthenticated) {
+    try { await trackMerchantClick(merchant.id); } catch { /* non-blocking */ }
+  }
+  navigate(`/merchants/${merchant.id}`);
+};
+```
+
+- `onSignIn` prop is removed entirely from `MerchantCard` — it is no longer needed.
+- Guest users land on the merchant detail page; the login modal only appears when they attempt to activate cashback (category click or offer click).
+
+---
+
+### Duplicate Transaction Prevention (Req 50)
+
+**File**: `src/pages/MerchantDetailPage.jsx`
+
+**New state**:
+```javascript
+const [isActivating, setIsActivating] = useState(false);
+```
+
+**Guard pattern** applied to both `handleCategoryClick` and `handleOfferActivate`:
+```javascript
+const handleCategoryClick = async (category) => {
+  if (isActivating) return;           // early return while in-flight
+  if (!isAuthenticated) { setAuthModal('login'); return; }
+  setIsActivating(true);
+  try {
+    // ... createTransaction + window.open + toast + wallet refresh
+  } finally {
+    setIsActivating(false);           // always reset
+  }
+};
+```
+
+**UI**: every category card `<button>` and every `OfferCard` "Activate Deal →" button receives `disabled={isActivating}`. Disabled state uses `opacity-50 cursor-not-allowed`.
+
+---
+
+### Wallet Auto-Refresh After Transaction (Req 51)
+
+**Pattern**: custom browser event `walletUpdated` decouples `MerchantDetailPage` from `App.jsx` state without prop drilling or context changes.
+
+**MerchantDetailPage** — dispatch after successful transaction:
+```javascript
+window.dispatchEvent(new Event('walletUpdated'));
+```
+
+**App.jsx** — listen and re-fetch:
+```javascript
+useEffect(() => {
+  const handleWalletUpdated = async () => {
+    const updated = await getWallet(token);
+    setWalletData(updated);
+    setTransactions(updated.transactions || []);
+  };
+  window.addEventListener('walletUpdated', handleWalletUpdated);
+  return () => window.removeEventListener('walletUpdated', handleWalletUpdated);
+}, [token]);
+```
+
+- Existing wallet state variable names (`walletData`, `transactions`) are preserved.
+- The listener is cleaned up on unmount via the `useEffect` return function.
+- Works for both category clicks and offer clicks since both dispatch the same event.
+
+---
+
+### Admin Transaction Management Page (Req 52)
+
+#### New API Method
+
+**File**: `src/services/api.js` (addition only — no changes to existing exports or base config)
+
+```javascript
+// PUT /api/v1/transactions/{id}/status
+export const updateTransactionStatus = async (transactionId, status, token) => {
+  const response = await apiClient.put(
+    `/transactions/${transactionId}/status`,
+    { status },
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  return response.data;
+};
+```
+
+#### New Route
+
+**File**: `main.jsx` — add alongside existing routes:
+```jsx
+<Route path="/admin" element={<AdminPage />} />
+```
+
+#### AdminPage Component
+
+**File**: `src/pages/AdminPage.jsx`
+
+**State**:
+```javascript
+const [unlocked, setUnlocked] = useState(false);
+const [passwordInput, setPasswordInput] = useState('');
+const [transactions, setTransactions] = useState([]);
+const [loading, setLoading] = useState(false);
+const ADMIN_PASSWORD = 'payback@admin2026';
+```
+
+**Auth reads from `useAuth()`** — no separate auth system:
+```javascript
+const { token } = useAuth();
+```
+
+**Password gate** (shown when `!unlocked`):
+```
+┌──────────────────────────────────────┐
+│  🔒 Admin Access                     │
+│                                      │
+│  Password: [__________________]      │
+│  [Unlock]                            │
+└──────────────────────────────────────┘
+```
+On submit: compare `passwordInput === ADMIN_PASSWORD`; if match set `unlocked = true` and fetch transactions; else show inline "Incorrect password".
+
+**Transaction table** (shown when `unlocked`):
+```
+┌──────────────────────────────────────────────────────────────────────────┐
+│  Admin — Transaction Management                                          │
+│                                                                          │
+│  ID   MERCHANT   ORDER AMT   CASHBACK   STATUS     CREATED AT   ACTIONS │
+│  ──────────────────────────────────────────────────────────────────────  │
+│  1    Flipkart   ₹1,000      ₹100       PENDING    10 Mar 2026  [✓][✗]  │
+│  2    Amazon     ₹1,000      ₹80        CONFIRMED  9 Mar 2026            │
+└──────────────────────────────────────────────────────────────────────────┘
+```
+
+**Fetching transactions**:
+```javascript
+const fetchTransactions = async () => {
+  setLoading(true);
+  try {
+    const res = await apiClient.get('/transactions/me', {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    setTransactions(res.data);
+  } finally {
+    setLoading(false);
+  }
+};
+```
+
+**Confirm / Reject buttons** (PENDING rows only):
+```jsx
+<button
+  onClick={() => handleStatusUpdate(tx.id, 'CONFIRMED')}
+  className="bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold px-3 py-1 rounded-full"
+>
+  Confirm
+</button>
+<button
+  onClick={() => handleStatusUpdate(tx.id, 'REJECTED')}
+  className="bg-red-500 hover:bg-red-600 text-white text-xs font-bold px-3 py-1 rounded-full"
+>
+  Reject
+</button>
+```
+
+**Status update handler**:
+```javascript
+const handleStatusUpdate = async (id, status) => {
+  await updateTransactionStatus(id, status, token);
+  await fetchTransactions(); // refresh list
+};
+```
+
+**Design**: uses existing emerald/slate design system — `bg-white rounded-3xl border border-slate-200`, status badges matching `TransactionList` styles.
+
+---
+
+### New Correctness Properties
+
+**Property 30: Guest Navigation to Merchant Detail**
+For any merchant card click where `isAuthenticated` is `false`, the app SHALL navigate to `/merchants/{id}` and SHALL NOT open the Login modal. `trackMerchantClick` SHALL NOT be called.
+*Validates: Req 49.1, 49.4*
+
+**Property 31: Duplicate Activation Prevention**
+While `isActivating` is `true`, any subsequent call to `handleCategoryClick` or `handleOfferActivate` SHALL return immediately without calling `createTransaction` or any other API method.
+*Validates: Req 50.1, 50.2*
+
+**Property 32: Wallet Event Propagation**
+After any successful `createTransaction` call on `MerchantDetailPage`, a `walletUpdated` event SHALL be dispatched on `window`, and `App.jsx`'s listener SHALL call `getWallet(token)` exactly once per event.
+*Validates: Req 51.1, 51.2*
+
+**Property 33: Admin Password Gate**
+For any password value that is not exactly `'payback@admin2026'`, the AdminPage SHALL NOT fetch transactions and SHALL display an inline error. Only the exact correct password SHALL unlock the page.
+*Validates: Req 52.2, 52.3*

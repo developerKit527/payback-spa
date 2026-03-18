@@ -128,4 +128,20 @@ export const getHealth = async () => {
   return response.data;
 };
 
+/**
+ * Update a transaction's status (admin use)
+ * @param {number} transactionId
+ * @param {'CONFIRMED'|'REJECTED'} status
+ * @param {string} token - JWT token
+ * @returns {Promise} Updated TransactionDTO
+ */
+export const updateTransactionStatus = async (transactionId, status, token) => {
+  const response = await apiClient.put(
+    `/transactions/${transactionId}/status`,
+    { status },
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  return response.data;
+};
+
 export default apiClient;

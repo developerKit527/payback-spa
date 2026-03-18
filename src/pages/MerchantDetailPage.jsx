@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, SearchX, Tag, Layers } from 'lucide-react';
-import { getMerchantById, createTransaction, getWallet } from '../services/api';
+import { getMerchantById, createTransaction } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useAuthModal } from '../context/AuthModalContext';
 import { useToast } from '../hooks/useToast';
@@ -100,6 +100,7 @@ export default function MerchantDetailPage() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [wallet, setWallet] = useState(null);
+  const [isActivating, setIsActivating] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -123,43 +124,44 @@ export default function MerchantDetailPage() {
     return () => { cancelled = true; };
   }, [id]);
 
-  // Refresh wallet after a transaction
-  const refreshWallet = async () => {
-    if (!isAuthenticated || !token) return;
-    try {
-      const w = await getWallet(token);
-      setWallet(w);
-    } catch { /* non-critical */ }
-  };
+  // Wallet refresh is handled via walletUpdated custom event dispatched to App.jsx
 
   const handleCategoryClick = async (category) => {
+    if (isActivating) return;
     if (!isAuthenticated) {
       setAuthModal('login');
       return;
     }
+    setIsActivating(true);
     try {
       const tx = await createTransaction(merchant.id, 1000, token);
       const cashback = tx?.cashbackAmount ?? (1000 * (merchant.cashbackRate / 100));
       window.open(category.affiliateUrl, '_blank');
       showToast(`Cashback activated! Shop and earn ${formatCurrency(cashback)}`, 'success');
-      refreshWallet();
+      window.dispatchEvent(new Event('walletUpdated'));
     } catch (err) {
       showToast(err.message || 'Could not activate cashback', 'error');
+    } finally {
+      setIsActivating(false);
     }
   };
 
   const handleOfferActivate = async (offer) => {
+    if (isActivating) return;
     if (!isAuthenticated) {
       setAuthModal('login');
       return;
     }
+    setIsActivating(true);
     try {
       await createTransaction(merchant.id, 1000, token);
       window.open(offer.affiliateUrl, '_blank');
       showToast('Deal activated! Cashback tracking started', 'success');
-      refreshWallet();
+      window.dispatchEvent(new Event('walletUpdated'));
     } catch (err) {
       showToast(err.message || 'Could not activate deal', 'error');
+    } finally {
+      setIsActivating(false);
     }
   };
 
@@ -261,6 +263,7 @@ export default function MerchantDetailPage() {
                 <CategoryGrid
                   categories={merchant.categories}
                   onCategoryClick={handleCategoryClick}
+                  disabled={isActivating}
                 />
               </div>
             )}
@@ -280,6 +283,7 @@ export default function MerchantDetailPage() {
                       key={offer.id}
                       offer={offer}
                       onActivate={handleOfferActivate}
+                      disabled={isActivating}
                     />
                   ))}
                 </div>

@@ -787,3 +787,82 @@ This implementation plan breaks down the Payback SPA Frontend into discrete, inc
   - Verify category and offer clicks require authentication
   - Verify MerchantCard navigates to detail page for logged-in users and opens Login modal for guests
   - Ask the user if questions arise before writing any code
+
+---
+
+## Tasks: Guest Navigation, Duplicate Prevention, Wallet Refresh, Admin Page (Requirements 49–52)
+
+- [ ] 51. Guest merchant navigation
+  - [ ] 51.1 Update `src/components/MerchantCard/MerchantCard.jsx`
+    - Remove `onSignIn` prop and all references to it
+    - WHEN authenticated: call `trackMerchantClick(merchant.id)` (non-blocking, catch silently) then `navigate('/merchants/' + merchant.id)`
+    - WHEN guest: call `navigate('/merchants/' + merchant.id)` directly — no login modal
+    - _Requirements: 49.1, 49.2, 49.3, 49.4, 49.5_
+
+  - [ ]* 51.2 Update MerchantCard tests
+    - Test guest click navigates to `/merchants/{id}` without opening login modal
+    - Test authenticated click calls `trackMerchantClick` then navigates
+    - Test `onSignIn` prop is no longer accepted / used
+
+- [ ] 52. Duplicate transaction prevention
+  - [ ] 52.1 Add `isActivating` state to `src/pages/MerchantDetailPage.jsx`
+    - Add `const [isActivating, setIsActivating] = useState(false)`
+    - Wrap `handleCategoryClick` and `handleOfferActivate` with early-return guard: `if (isActivating) return;`
+    - Set `setIsActivating(true)` before API calls; reset in `finally` block
+    - Pass `disabled={isActivating}` to all category card buttons and OfferCard activate buttons
+    - _Requirements: 50.1, 50.2, 50.3, 50.4_
+
+  - [ ]* 52.2 Write property test for duplicate prevention
+    - **Property 31: Duplicate Activation Prevention**
+    - **Validates: Req 50.1, 50.2**
+    - While `isActivating` is true, subsequent handler calls must not invoke `createTransaction`
+
+- [ ] 53. Wallet auto-refresh via custom event
+  - [ ] 53.1 Dispatch `walletUpdated` event from `MerchantDetailPage`
+    - After each successful `createTransaction` call (both category and offer paths), add: `window.dispatchEvent(new Event('walletUpdated'))`
+    - _Requirements: 51.1, 51.5_
+
+  - [ ] 53.2 Add `walletUpdated` listener in `App.jsx`
+    - Add a `useEffect` that calls `window.addEventListener('walletUpdated', handler)`
+    - Handler: `const updated = await getWallet(token); setWalletData(updated); setTransactions(updated.transactions || [])`
+    - Return cleanup: `window.removeEventListener('walletUpdated', handler)`
+    - Include `token` in the dependency array
+    - _Requirements: 51.2, 51.3, 51.4_
+
+  - [ ]* 53.3 Write property test for wallet event propagation
+    - **Property 32: Wallet Event Propagation**
+    - **Validates: Req 51.1, 51.2**
+    - Dispatching `walletUpdated` on window triggers exactly one `getWallet` call in App.jsx
+
+- [ ] 54. Admin transaction management page
+  - [ ] 54.1 Add `updateTransactionStatus` to `src/services/api.js`
+    - Export `updateTransactionStatus(transactionId, status, token)` → `PUT /api/v1/transactions/{transactionId}/status` with body `{ status }` and `Authorization: Bearer {token}` header
+    - Do NOT change base config or any existing exports
+    - _Requirements: 52.10_
+
+  - [ ] 54.2 Create `src/pages/AdminPage.jsx`
+    - Password gate: show password input on first load; compare against hardcoded `'payback@admin2026'`; show inline "Incorrect password" on mismatch
+    - On correct password: set `unlocked = true` and fetch `GET /api/v1/transactions/me` using `token` from `useAuth()`
+    - Display transactions table: columns `id`, `merchantName`, `orderAmount`, `cashbackAmount`, `status`, `createdAt`
+    - PENDING rows: show Confirm (emerald) and Reject (red) buttons
+    - On Confirm/Reject: call `updateTransactionStatus(id, status, token)` then re-fetch list
+    - Use emerald/slate design system (bg-white rounded-3xl border border-slate-200, status badges matching TransactionList)
+    - _Requirements: 52.1, 52.2, 52.3, 52.4, 52.5, 52.6, 52.7, 52.8, 52.9, 52.11_
+
+  - [ ] 54.3 Add `/admin` route in `main.jsx`
+    - Import `AdminPage` and add `<Route path="/admin" element={<AdminPage />} />`
+    - _Requirements: 52.1_
+
+  - [ ]* 54.4 Write property test for admin password gate
+    - **Property 33: Admin Password Gate**
+    - **Validates: Req 52.2, 52.3**
+    - For any password ≠ `'payback@admin2026'`, transactions are not fetched and inline error is shown
+
+- [ ] 55. Final checkpoint — Requirements 49–52
+  - Run `npm test -- --run` and confirm all tests pass
+  - Verify guest click on MerchantCard navigates to detail page (no login modal)
+  - Verify rapid category/offer clicks only create one transaction
+  - Verify wallet balance updates after activating cashback on merchant detail page
+  - Verify `/admin` route shows password gate, then transaction table after correct password
+  - Verify Confirm/Reject buttons update status and refresh the list
+  - Ask the user if questions arise before writing any code

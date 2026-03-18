@@ -2,7 +2,7 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import styles from './CategoryGrid.module.css';
 
-function CategoryGrid({ categories, onCategoryClick }) {
+function CategoryGrid({ categories, onCategoryClick, disabled }) {
   if (!categories || categories.length === 0) return null;
 
   return (
@@ -14,6 +14,7 @@ function CategoryGrid({ categories, onCategoryClick }) {
             key={category.id}
             className={styles.card}
             onClick={() => onCategoryClick(category)}
+            disabled={disabled}
             aria-label={`Shop ${category.name} — ${category.cashbackRate}% cashback`}
           >
             <div className={styles.iconCircle}>
@@ -39,6 +40,7 @@ CategoryGrid.propTypes = {
     })
   ).isRequired,
   onCategoryClick: PropTypes.func.isRequired,
+  disabled: PropTypes.bool,
 };
 
 export default CategoryGrid;
