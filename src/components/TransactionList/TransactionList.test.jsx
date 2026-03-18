@@ -71,7 +71,8 @@ describe('TransactionList', () => {
       render(<TransactionList transactions={[mockTransactions[0]]} />);
       const badges = screen.getAllByText('CONFIRMED');
       badges.forEach(badge => {
-        expect(badge).toHaveClass('bg-emerald-500');
+        expect(badge).toHaveClass('bg-emerald-50');
+        expect(badge).toHaveClass('text-emerald-700');
       });
     });
 
@@ -79,7 +80,8 @@ describe('TransactionList', () => {
       render(<TransactionList transactions={[mockTransactions[1]]} />);
       const badges = screen.getAllByText('PENDING');
       badges.forEach(badge => {
-        expect(badge).toHaveClass('bg-amber-500');
+        expect(badge).toHaveClass('bg-amber-50');
+        expect(badge).toHaveClass('text-amber-700');
       });
     });
 
@@ -87,16 +89,19 @@ describe('TransactionList', () => {
       render(<TransactionList transactions={[mockTransactions[2]]} />);
       const badges = screen.getAllByText('REJECTED');
       badges.forEach(badge => {
-        expect(badge).toHaveClass('bg-red-500');
+        expect(badge).toHaveClass('bg-red-50');
+        expect(badge).toHaveClass('text-red-700');
       });
     });
 
-    it('renders all status badges with white text', () => {
+    it('renders all status badges with correct text colors', () => {
       render(<TransactionList transactions={mockTransactions} />);
-      const badges = screen.getAllByText(/CONFIRMED|PENDING|REJECTED/);
-      badges.forEach(badge => {
-        expect(badge).toHaveClass('text-white');
-      });
+      const confirmed = screen.getAllByText('CONFIRMED');
+      confirmed.forEach(b => expect(b).toHaveClass('text-emerald-700'));
+      const pending = screen.getAllByText('PENDING');
+      pending.forEach(b => expect(b).toHaveClass('text-amber-700'));
+      const rejected = screen.getAllByText('REJECTED');
+      rejected.forEach(b => expect(b).toHaveClass('text-red-700'));
     });
   });
 
@@ -264,7 +269,7 @@ describe('TransactionList', () => {
         createdAt: '2024-03-10T10:00:00'
       };
       const { container } = render(<TransactionList transactions={[unknownStatusTransaction]} />);
-      const badges = container.querySelectorAll('[class*="bg-gray-500"]');
+      const badges = container.querySelectorAll('[class*="statusBadge"]');
       expect(badges.length).toBeGreaterThan(0);
     });
   });

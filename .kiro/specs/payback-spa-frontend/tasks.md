@@ -685,3 +685,105 @@ This implementation plan breaks down the Payback SPA Frontend into discrete, inc
     - **Property 26: Transaction Creation Auth Guard**
     - **Validates: Req 38.4, 38.6**
     - When token is null, `createTransaction` is never called regardless of merchant clicked
+
+---
+
+## Tasks: Merchant Detail Page (Requirements 43–48)
+
+- [ ] 43. Install and configure react-router-dom
+  - [ ] 43.1 Install react-router-dom v6
+    - Run `npm install react-router-dom` in the payback-spa directory
+    - _Requirements: 43.1_
+
+  - [ ] 43.2 Update `main.jsx` with BrowserRouter + Routes
+    - Import `BrowserRouter`, `Routes`, `Route` from react-router-dom
+    - Wrap the existing provider tree (`ToastProvider` → `AuthProvider`) inside `BrowserRouter`
+    - _Requirements: 43.3_
+
+  - [ ] 43.3 Wrap existing App content as HomePage route at `/`
+    - Add `<Route path="/" element={<App />} />` — no changes to App.jsx internals
+    - _Requirements: 43.2, 43.4_
+
+  - [ ] 43.4 Add `/merchants/:id` route pointing to MerchantDetailPage (stub)
+    - Create `src/pages/MerchantDetailPage.jsx` as a minimal stub returning `<div>Merchant Detail</div>`
+    - Add `<Route path="/merchants/:id" element={<MerchantDetailPage />} />`
+    - _Requirements: 43.2_
+
+- [ ] 44. Add `getMerchantById` to `api.js`
+  - [ ] 44.1 Export `getMerchantById(id)` → `GET /merchants/{id}`
+    - Add the export to `src/services/api.js` using the existing `apiClient` instance
+    - NOTE: `createTransaction` already exists from Task 42 — do not re-add it
+    - _Requirements: 44.2_
+
+- [ ] 45. Create MerchantDetailPage
+  - [ ] 45.1 Implement `src/pages/MerchantDetailPage.jsx`
+    - Use `useParams()` to extract `id`
+    - Call `getMerchantById(id)` on mount via `useEffect`
+    - Show skeleton loader (pulsing placeholder matching hero + grid layout) while fetching
+    - Show 404 state (lucide `SearchX` icon + "Merchant not found" + "← Back to Stores" link) when fetch returns 404
+    - Display hero banner: emerald-gradient card with merchant logo, name, cashback rate badge, categories count
+    - Display "← Back to Stores" link using react-router `<Link to="/">`
+    - _Requirements: 44.1, 44.2, 44.3, 44.4, 44.5, 44.6, 44.7_
+
+  - [ ]* 45.2 Write property test for merchant 404 handling
+    - **Property 29: Merchant 404 Handling**
+    - **Validates: Req 44.6**
+
+- [ ] 46. Implement CashbackCalculator component
+  - [ ] 46.1 Create `src/components/CashbackCalculator/CashbackCalculator.jsx` + `CashbackCalculator.module.css` + `index.js`
+    - Controlled input: "I plan to spend: ₹____"
+    - Live calculation on every keystroke: `cashback = inputAmount × (cashbackRate / 100)`
+    - Display "You will earn: ₹XX.XX cashback" (2 decimal places)
+    - Display "That's like X% OFF your purchase!" (always shows `cashbackRate`%)
+    - Dynamic CTA: "Shop on {merchantName} & Earn ₹XX →" when amount > 0; "Activate Cashback & Shop →" when empty or zero
+    - Accept `cashbackRate`, `merchantName`, `onActivate` props
+    - Wire into MerchantDetailPage left column
+    - _Requirements: 45.1, 45.2, 45.3, 45.4, 45.5, 45.6, 45.7_
+
+  - [ ]* 46.2 Write property test for cashback calculation accuracy
+    - **Property 27: Cashback Calculation Accuracy**
+    - **Validates: Req 45.4**
+
+- [ ] 47. Implement CategoryGrid component
+  - [ ] 47.1 Create `src/components/CategoryGrid/CategoryGrid.jsx` + `CategoryGrid.module.css` + `index.js`
+    - Responsive grid: `grid-cols-3 lg:grid-cols-4 gap-4`
+    - Each card: emoji icon in emerald circle (`w-12 h-12 rounded-full bg-emerald-50`), category name, cashback rate chip (`bg-emerald-50 text-emerald-700`)
+    - Accept `categories` array and `onCategoryClick(category)` callback prop
+    - _Requirements: 46.1, 46.2, 46.3_
+
+  - [ ] 47.2 Wire category click in MerchantDetailPage
+    - If `isAuthenticated`: call `createTransaction(merchant.id, 1000, token)` → open `category.affiliateUrl` in new tab → show toast "Cashback activated! Shop and earn ₹XX" → call `getWallet(token)` to refresh wallet
+    - If not authenticated: call `setAuthModal('login')` to open Login modal
+    - _Requirements: 46.4, 46.5, 46.6_
+
+  - [ ]* 47.3 Write property test for category click auth guard
+    - **Property 28: Category Click Auth Guard**
+    - **Validates: Req 46.4, 46.5**
+
+- [ ] 48. Implement OfferCard and Offers section
+  - [ ] 48.1 Create `src/components/OfferCard/OfferCard.jsx` + `index.js`
+    - Display: `title`, `description`, `discountText` badge (`bg-amber-50 text-amber-700 rounded-full`), "Activate Deal →" button (`bg-emerald-500 text-white rounded-full`)
+    - Accept `offer` object and `onActivate(offer)` callback prop
+    - _Requirements: 47.1, 47.2, 47.3_
+
+  - [ ] 48.2 Wire offers section in MerchantDetailPage
+    - Render "Today's Best Deals" section only when `merchant.offers` exists and is non-empty
+    - If `isAuthenticated`: call `createTransaction` → open `offer.affiliateUrl` → show toast "Deal activated! Cashback tracking started" → refresh wallet
+    - If not authenticated: open Login modal
+    - _Requirements: 47.1, 47.4, 47.5_
+
+- [ ] 49. Update MerchantCard for router navigation
+  - [ ] 49.1 Update `src/components/MerchantCard/MerchantCard.jsx`
+    - Import `useNavigate` from react-router-dom
+    - WHEN authenticated: call `trackMerchantClick(merchant.id)` (non-blocking, catch errors silently) then `navigate('/merchants/' + merchant.id)`
+    - WHEN not authenticated: call `onSignIn` prop (or equivalent) to open Login modal
+    - Remove direct `window.open` from the authenticated click path
+    - _Requirements: 48.1, 48.2, 48.3, 48.4_
+
+- [ ] 50. Final checkpoint — Requirements 43–48
+  - Run `npm test -- --run` and confirm all tests pass
+  - Verify `/merchants/:id` route loads MerchantDetailPage
+  - Verify calculator updates live as user types
+  - Verify category and offer clicks require authentication
+  - Verify MerchantCard navigates to detail page for logged-in users and opens Login modal for guests
+  - Ask the user if questions arise before writing any code

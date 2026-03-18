@@ -1,0 +1,101 @@
+.calculator {
+  background: white;
+  border-radius: 24px;
+  border: 1px solid #e2e8f0;
+  padding: 28px;
+}
+
+.inputWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: #f8fafc;
+  border: 2px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 14px 18px;
+  transition: border-color 0.2s;
+}
+
+.inputWrapper:focus-within {
+  border-color: #10b981;
+  background: white;
+}
+
+.currencySymbol {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #64748b;
+  margin-right: 6px;
+  flex-shrink: 0;
+}
+
+.amountInput {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #0f172a;
+  width: 100%;
+}
+
+.amountInput::placeholder {
+  color: #cbd5e1;
+  font-weight: 400;
+}
+
+.resultCard {
+  background: linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%);
+  border: 1px solid #a7f3d0;
+  border-radius: 16px;
+  padding: 20px;
+  margin-top: 16px;
+}
+
+.earnLabel {
+  font-size: 0.875rem;
+  color: #64748b;
+  margin-bottom: 4px;
+}
+
+.earnAmount {
+  font-size: 2rem;
+  font-weight: 800;
+  color: #059669;
+  line-height: 1.1;
+}
+
+.offLabel {
+  font-size: 0.8rem;
+  color: #10b981;
+  font-weight: 600;
+  margin-top: 6px;
+}
+
+.ctaButton {
+  width: 100%;
+  background: #10b981;
+  color: white;
+  border: none;
+  border-radius: 50px;
+  padding: 16px 24px;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+  margin-top: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.ctaButton:hover {
+  background: #059669;
+  transform: translateY(-1px);
+}
+
+.ctaButton:active {
+  transform: translateY(0);
+}

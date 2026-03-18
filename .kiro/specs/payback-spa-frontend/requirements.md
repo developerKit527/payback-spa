@@ -498,3 +498,173 @@ The Payback SPA Frontend is a modern React-based single-page application that pr
 4. WHEN `isAuthenticated` is false, `App.jsx` SHALL skip the `createTransaction` call and only open the merchant URL (existing behaviour)
 5. IF `createTransaction` fails, `App.jsx` SHALL show a toast "Could not record transaction" but SHALL still open the merchant URL so the user is not blocked
 6. THE `createTransaction` function SHALL NOT be called if `token` is null or undefined
+
+---
+
+## Requirements: Merchant Detail Page (REQ-043–048)
+
+### Requirement 43: React Router Setup
+
+**User Story:** As a developer, I want client-side routing, so that users can navigate between pages without full page reloads.
+
+#### Acceptance Criteria
+
+1. THE Frontend_Application SHALL install and configure react-router-dom v6
+2. THE Frontend_Application SHALL define these routes: `/` → HomePage (existing App.jsx content), `/merchants/:id` → MerchantDetailPage (new)
+3. THE Frontend_Application SHALL use `BrowserRouter` in `main.jsx`
+4. ALL existing functionality SHALL remain unchanged
+
+### Requirement 44: Merchant Detail Page
+
+**User Story:** As a user, I want to see a dedicated page for each merchant with categories and offers, so that I can choose what to shop for before activating cashback.
+
+#### Acceptance Criteria
+
+1. THE Frontend_Application SHALL create a `/merchants/:id` page
+2. THE page SHALL fetch `GET /api/v1/merchants/{id}` on load
+3. THE page SHALL display: merchant logo, name, cashback rate prominently
+4. THE page SHALL display a "← Back to Stores" link returning to homepage
+5. THE page SHALL display merchant stats: cashback rate badge, "X categories available"
+6. IF merchant not found, THE page SHALL show a 404 message
+7. THE page SHALL show a skeleton loader while fetching
+
+### Requirement 45: Cashback Calculator on Merchant Page
+
+**User Story:** As a user, I want to calculate my cashback before shopping, so that I feel motivated to shop through Payback.
+
+#### Acceptance Criteria
+
+1. THE MerchantDetailPage SHALL display a cashback calculator section
+2. THE calculator SHALL have an input field: "I plan to spend: ₹____"
+3. AS the user types, THE calculator SHALL update live: "You will earn: ₹XX.XX cashback"
+4. THE calculation SHALL be: `cashback = inputAmount × (merchant.cashbackRate / 100)`
+5. THE calculator SHALL display: "That's like X% OFF your purchase!"
+6. THE calculator CTA button text SHALL update dynamically: "Shop on {merchantName} & Earn ₹XX →"
+7. IF input is empty or zero, THE button SHALL show: "Activate Cashback & Shop →"
+
+### Requirement 46: Merchant Category Grid
+
+**User Story:** As a user, I want to see merchant categories with cashback rates, so that I can navigate directly to what I want to buy.
+
+#### Acceptance Criteria
+
+1. THE MerchantDetailPage SHALL display a "Shop by Category" section
+2. THE categories SHALL be displayed in a responsive grid: 3 columns mobile, 4 columns desktop
+3. EACH category card SHALL display: icon (emoji), category name, cashback rate
+4. WHEN a user clicks a category AND is authenticated, THE app SHALL:
+   - Call `POST /api/v1/transactions` with `{ merchantId, orderAmount: 1000 }`
+   - Open `category.affiliateUrl` in a new tab
+   - Show toast "Cashback activated! Shop and earn ₹XX"
+5. WHEN a user clicks a category AND is NOT authenticated, THE app SHALL open the Login modal
+6. AFTER transaction created, THE wallet data SHALL refresh
+
+### Requirement 47: Merchant Offers Section
+
+**User Story:** As a user, I want to see current deals and offers for a merchant, so that I can get the best value.
+
+#### Acceptance Criteria
+
+1. THE MerchantDetailPage SHALL display a "Today's Best Deals" section if offers exist
+2. EACH offer card SHALL display: title, description, discountText badge, CTA button
+3. THE offer CTA button text SHALL be "Activate Deal →"
+4. WHEN a user clicks an offer AND is authenticated, THE app SHALL:
+   - Call `POST /api/v1/transactions` with `{ merchantId, orderAmount: 1000 }`
+   - Open `offer.affiliateUrl` in a new tab
+   - Show toast "Deal activated! Cashback tracking started"
+5. WHEN a user clicks an offer AND is NOT authenticated, THE app SHALL open the Login modal
+
+### Requirement 48: Merchant Page Navigation from Homepage
+
+**User Story:** As a user, I want clicking a merchant card on the homepage to take me to the merchant detail page, so that I can see full details before shopping.
+
+#### Acceptance Criteria
+
+1. WHEN a logged-in user clicks "Shop Now" on a MerchantCard, THE app SHALL navigate to `/merchants/{id}` instead of directly opening the affiliate URL
+2. WHEN a guest user clicks "Shop Now" on a MerchantCard, THE app SHALL open the Login modal
+3. THE existing click tracking `GET /api/v1/merchants/{id}/click` SHALL still be called when navigating to merchant page
+4. THE MerchantCard SHALL use react-router-dom `useNavigate` hook for navigation
+
+---
+
+## Requirements: Merchant Detail Page (REQ-043–048)
+
+### Requirement 43: React Router Setup
+
+**User Story:** As a developer, I want client-side routing, so that users can navigate between pages without full page reloads.
+
+#### Acceptance Criteria
+
+1. THE Frontend_Application SHALL install and configure react-router-dom v6
+2. THE Frontend_Application SHALL define these routes: `/` → HomePage (existing App.jsx content), `/merchants/:id` → MerchantDetailPage (new)
+3. THE Frontend_Application SHALL use `BrowserRouter` in `main.jsx`
+4. ALL existing functionality SHALL remain unchanged
+
+### Requirement 44: Merchant Detail Page
+
+**User Story:** As a user, I want to see a dedicated page for each merchant with categories and offers, so that I can choose what to shop for before activating cashback.
+
+#### Acceptance Criteria
+
+1. THE Frontend_Application SHALL create a `/merchants/:id` page
+2. THE page SHALL fetch `GET /api/v1/merchants/{id}` on load
+3. THE page SHALL display: merchant logo, name, cashback rate prominently
+4. THE page SHALL display a "← Back to Stores" link returning to homepage
+5. THE page SHALL display merchant stats: cashback rate badge, "X categories available"
+6. IF merchant not found, THE page SHALL show a 404 message
+7. THE page SHALL show a skeleton loader while fetching
+
+### Requirement 45: Cashback Calculator on Merchant Page
+
+**User Story:** As a user, I want to calculate my cashback before shopping, so that I feel motivated to shop through Payback.
+
+#### Acceptance Criteria
+
+1. THE MerchantDetailPage SHALL display a cashback calculator section
+2. THE calculator SHALL have an input field: "I plan to spend: ₹____"
+3. AS the user types, THE calculator SHALL update live: "You will earn: ₹XX.XX cashback"
+4. THE calculation SHALL be: `cashback = inputAmount × (merchant.cashbackRate / 100)`
+5. THE calculator SHALL display: "That's like X% OFF your purchase!"
+6. THE calculator CTA button text SHALL update dynamically: "Shop on {merchantName} & Earn ₹XX →"
+7. IF input is empty or zero, THE button SHALL show: "Activate Cashback & Shop →"
+
+### Requirement 46: Merchant Category Grid
+
+**User Story:** As a user, I want to see merchant categories with cashback rates, so that I can navigate directly to what I want to buy.
+
+#### Acceptance Criteria
+
+1. THE MerchantDetailPage SHALL display a "Shop by Category" section
+2. THE categories SHALL be displayed in a responsive grid: 3 columns mobile, 4 columns desktop
+3. EACH category card SHALL display: icon (emoji), category name, cashback rate
+4. WHEN a user clicks a category AND is authenticated, THE app SHALL:
+   - Call `POST /api/v1/transactions` with `{ merchantId, orderAmount: 1000 }`
+   - Open `category.affiliateUrl` in a new tab
+   - Show toast "Cashback activated! Shop and earn ₹XX"
+5. WHEN a user clicks a category AND is NOT authenticated, THE app SHALL open the Login modal
+6. AFTER transaction created, THE wallet data SHALL refresh
+
+### Requirement 47: Merchant Offers Section
+
+**User Story:** As a user, I want to see current deals and offers for a merchant, so that I can get the best value.
+
+#### Acceptance Criteria
+
+1. THE MerchantDetailPage SHALL display a "Today's Best Deals" section if offers exist
+2. EACH offer card SHALL display: title, description, discountText badge, CTA button
+3. THE offer CTA button text SHALL be "Activate Deal →"
+4. WHEN a user clicks an offer AND is authenticated, THE app SHALL:
+   - Call `POST /api/v1/transactions` with `{ merchantId, orderAmount: 1000 }`
+   - Open `offer.affiliateUrl` in a new tab
+   - Show toast "Deal activated! Cashback tracking started"
+5. WHEN a user clicks an offer AND is NOT authenticated, THE app SHALL open the Login modal
+
+### Requirement 48: Merchant Page Navigation from Homepage
+
+**User Story:** As a user, I want clicking a merchant card on the homepage to take me to the merchant detail page, so that I can see full details before shopping.
+
+#### Acceptance Criteria
+
+1. WHEN a logged-in user clicks "Shop Now" on a MerchantCard, THE app SHALL navigate to `/merchants/{id}` instead of directly opening the affiliate URL
+2. WHEN a guest user clicks "Shop Now" on a MerchantCard, THE app SHALL open the Login modal
+3. THE existing click tracking `GET /api/v1/merchants/{id}/click` SHALL still be called when navigating to merchant page
+4. THE MerchantCard SHALL use react-router-dom `useNavigate` hook for navigation

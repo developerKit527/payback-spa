@@ -1900,3 +1900,358 @@ window.open(url, '_blank')      (always)
 **Property 26: Transaction Creation Auth Guard**
 For any merchant click where `token` is `null` or `isAuthenticated` is `false`, `createTransaction` SHALL NOT be called. The merchant URL SHALL still be opened.
 *Validates: Req 38.4, 38.6*
+
+
+---
+
+## Design Additions: Merchant Detail Page (Requirements 43–48)
+
+### React Router Setup (Req 43)
+
+**Installation**: `npm install react-router-dom`
+
+**`main.jsx` update**:
+```jsx
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import App from './App';
+import MerchantDetailPage from './pages/MerchantDetailPage';
+
+<ToastProvider>
+  <AuthProvider>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<App />} />
+        <Route path="/merchants/:id" element={<MerchantDetailPage />} />
+      </Routes>
+    </BrowserRouter>
+  </AuthProvider>
+</ToastProvider>
+```
+
+All existing `App.jsx` content remains on the `/` route — no structural changes to App.jsx.
+
+---
+
+### New API Method (Req 44)
+
+**File**: `src/services/api.js` (addition only — `createTransaction` already exists from Req 38)
+
+```javascript
+export const getMerchantById = async (id) => {
+  const response = await apiClient.get(`/merchants/${id}`);
+  return response.data;
+};
+```
+
+`createTransaction` is already exported from Task 42 — do not re-add it.
+
+---
+
+### MerchantDetailPage (Req 44)
+
+**File**: `src/pages/MerchantDetailPage.jsx`
+
+**Layout** (premium, not a CashKaro clone):
+```
+┌──────────────────────────────────────────────────────────────┐
+│  ← Back to Stores                                            │
+│                                                              │
+│  HERO BANNER (emerald gradient accent, full-width)           │
+│  ┌──────────────────────────────────────────────────────┐    │
+│  │  [Logo]  Merchant Name                               │    │
+│  │          Upto X% Cashback  •  N categories           │    │
+│  └──────────────────────────────────────────────────────┘    │
+│                                                              │
+│  ┌─────────────────────────┐  ┌──────────────────────────┐  │
+│  │  CashbackCalculator     │  │  Today's Best Deals      │  │
+│  │  (left col, desktop)    │  │  (right col, desktop)    │  │
+│  ├─────────────────────────┤  └──────────────────────────┘  │
+│  │  Shop by Category       │                                 │
+│  │  (below calculator)     │                                 │
+│  └─────────────────────────┘                                 │
+└──────────────────────────────────────────────────────────────┘
+```
+
+**Responsive**: two-column (`lg:grid-cols-[1fr_380px]`) on desktop, single column on mobile.
+
+**Data fetching**:
+```javascript
+const { id } = useParams();
+const [merchant, setMerchant] = useState(null);
+const [loading, setLoading] = useState(true);
+const [notFound, setNotFound] = useState(false);
+
+useEffect(() => {
+  getMerchantById(id)
+    .then(setMerchant)
+    .catch(err => {
+      if (err?.status === 404 || err?.response?.status === 404) setNotFound(true);
+    })
+    .finally(() => setLoading(false));
+}, [id]);
+```
+
+**Skeleton loader**: pulsing placeholder matching hero banner height + grid layout below.
+
+**404 state**: centered `<SearchX />` lucide icon + "Merchant not found" heading + "← Back to Stores" link.
+
+**Hero banner**:
+```jsx
+<div className="bg-gradient-to-r from-slate-900 via-slate-800 to-emerald-900 rounded-3xl p-8">
+  <img src={merchant.logoUrl} className="w-20 h-20 rounded-2xl bg-white p-2" />
+  <h1 className="text-3xl font-bold text-white">{merchant.name}</h1>
+  <span className="bg-emerald-500 text-white px-4 py-1 rounded-full font-bold">
+    Upto {merchant.cashbackRate}% Cashback
+  </span>
+  <span className="text-slate-300 text-sm">{merchant.categories?.length ?? 0} categories available</span>
+</div>
+```
+
+---
+
+### CashbackCalculator Component (Req 45)
+
+**File**: `src/components/CashbackCalculator/CashbackCalculator.jsx`
+
+**Props**:
+```javascript
+{
+  cashbackRate: number,      // e.g. 10 for 10%
+  merchantName: string,
+  onActivate: () => void     // called when CTA button is clicked
+}
+```
+
+**State**: `inputAmount: string` (controlled input)
+
+**Calculation** (derived, no extra state):
+```javascript
+const amount = parseFloat(inputAmount) || 0;
+const cashback = amount * (cashbackRate / 100);
+const hasAmount = amount > 0;
+```
+
+**Layout**:
+```
+┌──────────────────────────────────────────────┐
+│  bg-white rounded-3xl border border-slate-200 │
+│  shadow-sm p-6                                │
+│                                               │
+│  💰 Cashback Calculator                       │
+│                                               │
+│  I plan to spend: ₹ [____________]            │
+│                                               │
+│  You will earn: ₹12.50 cashback               │
+│  That's like 10% OFF your purchase!           │
+│                                               │
+│  [Shop on Flipkart & Earn ₹12.50 →]           │
+│   or [Activate Cashback & Shop →] if empty    │
+└──────────────────────────────────────────────┘
+```
+
+**CTA button**: `bg-emerald-500 hover:bg-emerald-600 text-white rounded-full px-6 py-3 font-semibold w-full transition-colors`
+
+**"That's like X% OFF"**: always shows `cashbackRate`% since cashback = rate% of spend.
+
+---
+
+### CategoryGrid Component (Req 46)
+
+**File**: `src/components/CategoryGrid/CategoryGrid.jsx`
+
+**Props**:
+```javascript
+{
+  categories: Array<{
+    id: number,
+    name: string,
+    icon: string,          // emoji
+    cashbackRate: number,
+    affiliateUrl: string
+  }>,
+  onCategoryClick: (category) => void
+}
+```
+
+**Grid**: `grid grid-cols-3 lg:grid-cols-4 gap-4`
+
+**Category card**:
+```jsx
+<button className="bg-white rounded-2xl border border-slate-200 p-4 flex flex-col items-center gap-2
+                   hover:border-emerald-300 hover:shadow-md transition-all">
+  <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center text-2xl">
+    {category.icon}
+  </div>
+  <span className="text-sm font-semibold text-slate-800 text-center">{category.name}</span>
+  <span className="text-xs bg-emerald-50 text-emerald-700 rounded-full px-2 py-0.5 font-medium">
+    {category.cashbackRate}% CB
+  </span>
+</button>
+```
+
+**Click handler in MerchantDetailPage**:
+```javascript
+const handleCategoryClick = async (category) => {
+  if (!isAuthenticated) {
+    setAuthModal('login');
+    return;
+  }
+  try {
+    const tx = await createTransaction(merchant.id, 1000, token);
+    const cashback = tx?.cashbackAmount ?? (1000 * merchant.cashbackRate / 100).toFixed(2);
+    window.open(category.affiliateUrl, '_blank');
+    showToast(`Cashback activated! Shop and earn ₹${cashback}`, 'success');
+    const updated = await getWallet(token);
+    // wallet refresh passed up via prop or context
+  } catch {
+    showToast('Could not record transaction', 'error');
+    window.open(category.affiliateUrl, '_blank');
+  }
+};
+```
+
+---
+
+### OfferCard Component (Req 47)
+
+**File**: `src/components/OfferCard/OfferCard.jsx`
+
+**Props**:
+```javascript
+{
+  offer: {
+    id: number,
+    title: string,
+    description: string,
+    discountText: string,   // e.g. "20% OFF"
+    affiliateUrl: string
+  },
+  onActivate: (offer) => void
+}
+```
+
+**Layout**:
+```jsx
+<div className="bg-white rounded-2xl border border-slate-200 p-5 flex flex-col gap-3">
+  <div className="flex items-start justify-between gap-2">
+    <h3 className="font-semibold text-slate-900 text-sm leading-snug">{offer.title}</h3>
+    <span className="bg-amber-50 text-amber-700 text-xs font-bold px-2 py-1 rounded-full shrink-0">
+      {offer.discountText}
+    </span>
+  </div>
+  <p className="text-slate-500 text-xs leading-relaxed">{offer.description}</p>
+  <button
+    onClick={() => onActivate(offer)}
+    className="bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold
+               rounded-full px-4 py-2 transition-colors self-start"
+  >
+    Activate Deal →
+  </button>
+</div>
+```
+
+**Click handler in MerchantDetailPage** (same auth-guard pattern as categories):
+```javascript
+const handleOfferActivate = async (offer) => {
+  if (!isAuthenticated) {
+    setAuthModal('login');
+    return;
+  }
+  try {
+    await createTransaction(merchant.id, 1000, token);
+    window.open(offer.affiliateUrl, '_blank');
+    showToast('Deal activated! Cashback tracking started', 'success');
+    const updated = await getWallet(token);
+    // refresh wallet
+  } catch {
+    showToast('Could not record transaction', 'error');
+    window.open(offer.affiliateUrl, '_blank');
+  }
+};
+```
+
+---
+
+### MerchantCard Navigation Update (Req 48)
+
+**File**: `src/components/MerchantCard/MerchantCard.jsx`
+
+**Change**: replace `window.open` on authenticated click with `useNavigate`:
+
+```javascript
+import { useNavigate } from 'react-router-dom';
+
+const navigate = useNavigate();
+
+const handleClick = async () => {
+  if (!isAuthenticated) {
+    onSignIn(); // open Login modal
+    return;
+  }
+  // Still call click tracking
+  try {
+    await trackMerchantClick(merchant.id);
+  } catch {
+    // non-blocking
+  }
+  navigate(`/merchants/${merchant.id}`);
+};
+```
+
+**Key constraint**: `trackMerchantClick` is still called (Req 48.3). The direct `window.open` is removed from the authenticated path. Guest users still see the Login modal.
+
+---
+
+### New Component Structure
+
+```
+src/pages/
+  MerchantDetailPage.jsx       # Route component for /merchants/:id
+
+src/components/
+  CashbackCalculator/
+    CashbackCalculator.jsx
+    CashbackCalculator.module.css
+    index.js
+  CategoryGrid/
+    CategoryGrid.jsx
+    CategoryGrid.module.css
+    index.js
+  OfferCard/
+    OfferCard.jsx
+    index.js
+```
+
+---
+
+### Updated Component Hierarchy (Post-Router)
+
+```
+main.jsx
+└── BrowserRouter
+    └── Routes
+        ├── Route "/"
+        │   └── App (existing homepage)
+        └── Route "/merchants/:id"
+            └── MerchantDetailPage
+                ├── Hero Banner
+                ├── CashbackCalculator
+                ├── CategoryGrid
+                └── OfferCard[] (Today's Best Deals)
+```
+
+---
+
+### New Correctness Properties
+
+**Property 27: Cashback Calculation Accuracy**
+For any `inputAmount` ≥ 0 and any `cashbackRate` ≥ 0, the displayed cashback value SHALL equal `(inputAmount × cashbackRate / 100)` rounded to 2 decimal places. No floating-point drift shall be visible in the UI.
+*Validates: Req 45.4*
+
+**Property 28: Category Click Auth Guard**
+For any category or offer click where `isAuthenticated` is `false` or `token` is `null`, `createTransaction` SHALL NOT be called. The Login modal SHALL be opened instead.
+*Validates: Req 46.4, 46.5, 47.4, 47.5*
+
+**Property 29: Merchant 404 Handling**
+When `getMerchantById` rejects with a 404 error for any merchant ID, the MerchantDetailPage SHALL render the 404 message state and SHALL NOT throw an unhandled exception or render a blank page.
+*Validates: Req 44.6*

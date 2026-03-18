@@ -110,6 +110,16 @@ export const createTransaction = async (merchantId, orderAmount, token) => {
 };
 
 /**
+ * Fetch a single merchant by ID
+ * @param {number|string} id - Merchant ID
+ * @returns {Promise} MerchantDetailDTO
+ */
+export const getMerchantById = async (id) => {
+  const response = await apiClient.get(`/merchants/${id}`);
+  return response.data;
+};
+
+/**
  * Health check — used for cold-start detection
  * @returns {Promise} Health status
  */

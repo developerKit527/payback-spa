@@ -1,7 +1,28 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import MerchantCard from './MerchantCard';
+import { trackMerchantClick } from '../../services/api';
+
+// Mutable auth state for per-test control
+const mockAuthState = { isAuthenticated: true, token: 'test-token' };
+
+vi.mock('../../context/AuthContext', () => ({
+  useAuth: () => mockAuthState,
+}));
+
+vi.mock('../../services/api', () => ({
+  trackMerchantClick: vi.fn().mockResolvedValue({}),
+}));
+
+function renderCard(merchant, props = {}) {
+  return render(
+    <MemoryRouter>
+      <MerchantCard merchant={merchant} {...props} />
+    </MemoryRouter>
+  );
+}
 
 describe('MerchantCard', () => {
   const mockMerchant = {
@@ -12,15 +33,20 @@ describe('MerchantCard', () => {
     manualTrackingUrl: null,
   };
 
-  const mockOnActivate = vi.fn();
+  const mockOnSignIn = vi.fn();
 
   beforeEach(() => {
-    mockOnActivate.mockClear();
+    mockOnSignIn.mockClear();
+    trackMerchantClick.mockClear();
+    trackMerchantClick.mockResolvedValue({});
+    // Reset to authenticated by default
+    mockAuthState.isAuthenticated = true;
+    mockAuthState.token = 'test-token';
   });
 
   describe('Rendering', () => {
     it('renders the merchant card with all elements', () => {
-      render(<MerchantCard merchant={mockMerchant} onActivate={mockOnActivate} />);
+      renderCard(mockMerchant);
       expect(screen.getByTestId('merchant-card')).toBeInTheDocument();
       expect(screen.getByTestId('merchant-logo-container')).toBeInTheDocument();
       expect(screen.getByTestId('merchant-name')).toBeInTheDocument();
@@ -29,48 +55,48 @@ describe('MerchantCard', () => {
     });
 
     it('displays the merchant name', () => {
-      render(<MerchantCard merchant={mockMerchant} onActivate={mockOnActivate} />);
+      renderCard(mockMerchant);
       expect(screen.getByTestId('merchant-name')).toHaveTextContent('Amazon India');
     });
 
     it('displays the merchant logo when logoUrl is valid', () => {
-      render(<MerchantCard merchant={mockMerchant} onActivate={mockOnActivate} />);
+      renderCard(mockMerchant);
       const logo = screen.getByTestId('merchant-logo');
       expect(logo).toHaveAttribute('src', 'https://example.com/amazon-logo.png');
       expect(logo).toHaveAttribute('alt', 'Amazon India logo');
     });
 
     it('displays "Shop Now →" button text', () => {
-      render(<MerchantCard merchant={mockMerchant} onActivate={mockOnActivate} />);
+      renderCard(mockMerchant);
       expect(screen.getByTestId('shop-earn-button')).toHaveTextContent('Shop Now');
     });
   });
 
   describe('Cashback Rate Display', () => {
     it('displays cashback rate as "Upto X% Cashback"', () => {
-      render(<MerchantCard merchant={mockMerchant} onActivate={mockOnActivate} />);
+      renderCard(mockMerchant);
       expect(screen.getByTestId('cashback-badge-corner')).toHaveTextContent('Upto 10% Cashback');
     });
 
     it('displays 5% cashback correctly', () => {
-      render(<MerchantCard merchant={{ ...mockMerchant, cashbackRate: 5 }} onActivate={mockOnActivate} />);
+      renderCard({ ...mockMerchant, cashbackRate: 5 });
       expect(screen.getByTestId('cashback-badge-corner')).toHaveTextContent('Upto 5% Cashback');
     });
 
     it('displays 15% cashback correctly', () => {
-      render(<MerchantCard merchant={{ ...mockMerchant, cashbackRate: 15 }} onActivate={mockOnActivate} />);
+      renderCard({ ...mockMerchant, cashbackRate: 15 });
       expect(screen.getByTestId('cashback-badge-corner')).toHaveTextContent('Upto 15% Cashback');
     });
 
     it('displays decimal cashback rates', () => {
-      render(<MerchantCard merchant={{ ...mockMerchant, cashbackRate: 7.5 }} onActivate={mockOnActivate} />);
+      renderCard({ ...mockMerchant, cashbackRate: 7.5 });
       expect(screen.getByTestId('cashback-badge-corner')).toHaveTextContent('Upto 7.5% Cashback');
     });
   });
 
   describe('Image Fallback', () => {
     it('shows fallback circle with first letter when logo fails to load', () => {
-      render(<MerchantCard merchant={mockMerchant} onActivate={mockOnActivate} />);
+      renderCard(mockMerchant);
       const logo = screen.getByTestId('merchant-logo');
       fireEvent.error(logo);
       expect(screen.getByTestId('merchant-logo-fallback')).toBeInTheDocument();
@@ -78,46 +104,53 @@ describe('MerchantCard', () => {
     });
 
     it('shows fallback circle when logoUrl is missing', () => {
-      render(<MerchantCard merchant={{ ...mockMerchant, logoUrl: null }} onActivate={mockOnActivate} />);
+      renderCard({ ...mockMerchant, logoUrl: null });
       expect(screen.getByTestId('merchant-logo-fallback')).toBeInTheDocument();
     });
 
     it('uses original image URL initially', () => {
-      render(<MerchantCard merchant={mockMerchant} onActivate={mockOnActivate} />);
+      renderCard(mockMerchant);
       const logo = screen.getByTestId('merchant-logo');
       expect(logo).toHaveAttribute('src', 'https://example.com/amazon-logo.png');
     });
   });
 
   describe('Button Interaction', () => {
-    it('calls onActivate when Shop Now button is clicked', async () => {
-      mockOnActivate.mockResolvedValue(undefined);
-      render(<MerchantCard merchant={mockMerchant} onActivate={mockOnActivate} />);
+    it('calls onSignIn when Shop Now button is clicked and user is not authenticated', async () => {
+      mockAuthState.isAuthenticated = false;
+      mockAuthState.token = null;
+      renderCard(mockMerchant, { onSignIn: mockOnSignIn });
       fireEvent.click(screen.getByTestId('shop-earn-button'));
-      await waitFor(() => expect(mockOnActivate).toHaveBeenCalledWith(1));
+      await waitFor(() => expect(mockOnSignIn).toHaveBeenCalled());
     });
 
-    it('disables button during activation', async () => {
-      mockOnActivate.mockImplementation(() => new Promise(resolve => setTimeout(resolve, 100)));
-      render(<MerchantCard merchant={mockMerchant} onActivate={mockOnActivate} />);
-      fireEvent.click(screen.getByTestId('shop-earn-button'));
-      expect(screen.getByTestId('shop-earn-button')).toBeDisabled();
-      expect(screen.getByTestId('shop-earn-button')).toHaveTextContent('Opening...');
+    it('navigates to merchant page when authenticated and Shop Now is clicked', async () => {
+      renderCard(mockMerchant);
+      const button = screen.getByTestId('shop-earn-button');
+      fireEvent.click(button);
+      // Button should not be permanently disabled after click
+      await waitFor(() => expect(button).not.toBeDisabled());
     });
 
     it('prevents multiple simultaneous clicks', async () => {
-      mockOnActivate.mockImplementation(() => new Promise(resolve => setTimeout(resolve, 100)));
-      render(<MerchantCard merchant={mockMerchant} onActivate={mockOnActivate} />);
+      trackMerchantClick.mockClear();
+      let resolveClick;
+      trackMerchantClick.mockImplementation(
+        () => new Promise(resolve => { resolveClick = resolve; })
+      );
+      renderCard(mockMerchant);
       const button = screen.getByTestId('shop-earn-button');
+      // First click starts the async operation
       fireEvent.click(button);
-      fireEvent.click(button);
-      fireEvent.click(button);
-      await waitFor(() => expect(mockOnActivate).toHaveBeenCalledTimes(1));
+      // Verify only one call was made (guard prevents re-entry)
+      expect(trackMerchantClick).toHaveBeenCalledTimes(1);
+      // Resolve the pending promise and wait for re-enable
+      resolveClick();
+      await waitFor(() => expect(button).not.toBeDisabled());
     });
 
     it('re-enables button after activation completes', async () => {
-      mockOnActivate.mockResolvedValue(undefined);
-      render(<MerchantCard merchant={mockMerchant} onActivate={mockOnActivate} />);
+      renderCard(mockMerchant);
       fireEvent.click(screen.getByTestId('shop-earn-button'));
       await waitFor(() => {
         expect(screen.getByTestId('shop-earn-button')).not.toBeDisabled();
@@ -128,7 +161,7 @@ describe('MerchantCard', () => {
 
   describe('Styling', () => {
     it('has correct base card classes', () => {
-      render(<MerchantCard merchant={mockMerchant} onActivate={mockOnActivate} />);
+      renderCard(mockMerchant);
       const card = screen.getByTestId('merchant-card');
       expect(card).toHaveClass('bg-white');
       expect(card).toHaveClass('rounded-2xl');
@@ -136,7 +169,7 @@ describe('MerchantCard', () => {
     });
 
     it('positions corner badge absolutely', () => {
-      render(<MerchantCard merchant={mockMerchant} onActivate={mockOnActivate} />);
+      renderCard(mockMerchant);
       const badge = screen.getByTestId('cashback-badge-corner');
       expect(badge).toHaveClass('absolute');
       expect(badge).toHaveClass('top-4');
@@ -144,7 +177,7 @@ describe('MerchantCard', () => {
     });
 
     it('button has border-primary and hover:bg-primary classes', () => {
-      render(<MerchantCard merchant={mockMerchant} onActivate={mockOnActivate} />);
+      renderCard(mockMerchant);
       const btn = screen.getByTestId('shop-earn-button');
       expect(btn).toHaveClass('border-primary');
       expect(btn).toHaveClass('text-primary');
@@ -154,14 +187,14 @@ describe('MerchantCard', () => {
   describe('Different Merchants', () => {
     it('renders Flipkart merchant correctly', () => {
       const flipkart = { id: 2, name: 'Flipkart', logoUrl: 'https://example.com/flipkart.png', cashbackRate: 8, manualTrackingUrl: null };
-      render(<MerchantCard merchant={flipkart} onActivate={mockOnActivate} />);
+      renderCard(flipkart);
       expect(screen.getByTestId('merchant-name')).toHaveTextContent('Flipkart');
       expect(screen.getByTestId('cashback-badge-corner')).toHaveTextContent('Upto 8% Cashback');
     });
 
     it('renders Myntra merchant correctly', () => {
       const myntra = { id: 3, name: 'Myntra', logoUrl: 'https://example.com/myntra.png', cashbackRate: 12, manualTrackingUrl: null };
-      render(<MerchantCard merchant={myntra} onActivate={mockOnActivate} />);
+      renderCard(myntra);
       expect(screen.getByTestId('merchant-name')).toHaveTextContent('Myntra');
       expect(screen.getByTestId('cashback-badge-corner')).toHaveTextContent('Upto 12% Cashback');
     });

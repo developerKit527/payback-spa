@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { getWallet, getMerchants, trackMerchantClick, getHealth, createTransaction } from './services/api';
+import { getWallet, getMerchants, getHealth } from './services/api';
 import { useToast } from './hooks/useToast';
 import { useAuth } from './context/AuthContext';
+import { useAuthModal } from './context/AuthModalContext';
 import Header from './components/Header';
 import HeroSection from './components/HeroSection';
 import CategoryPills from './components/CategoryPills';
@@ -19,6 +20,7 @@ import { MERCHANT_CATEGORIES } from './utils/merchantCategories';
 function App() {
   const { showToast } = useToast();
   const { token, isAuthenticated } = useAuth();
+  const { authModal, setAuthModal } = useAuthModal();
   const [wallet, setWallet] = useState(null);
   const [merchants, setMerchants] = useState([]);
   const [transactions, setTransactions] = useState([]);
@@ -26,7 +28,6 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [serverWaking, setServerWaking] = useState(false);
-  const [authModal, setAuthModal] = useState(null); // 'login' | 'register' | null
   const wakingTimerRef = useRef(null);
 
   const filteredMerchants = activeCategory
@@ -69,36 +70,6 @@ function App() {
     return () => clearTimeout(wakingTimerRef.current);
   }, [isAuthenticated]);
 
-  const handleMerchantActivate = async (merchantId) => {
-    try {
-      const result = await trackMerchantClick(merchantId);
-      const url = result?.redirectUrl || result?.url || result;
-
-      // Record transaction for authenticated users (non-blocking)
-      if (isAuthenticated && token) {
-        try {
-          await createTransaction(merchantId, 1000, token);
-          // Refresh wallet so new transaction appears immediately
-          const updatedWallet = await getWallet(token);
-          setWallet(updatedWallet);
-          setTransactions(updatedWallet.transactions || []);
-        } catch {
-          showToast('Could not record transaction', 'error');
-          // continue — still open the merchant URL below
-        }
-      }
-
-      if (!url || typeof url !== 'string') {
-        showToast('Merchant link not available yet.', 'info');
-        return;
-      }
-      window.open(url, '_blank');
-    } catch (err) {
-      console.error('Failed to track merchant click:', err);
-      showToast('Failed to activate cashback. Please try again.', 'error');
-    }
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50">
@@ -114,7 +85,7 @@ function App() {
             <WalletCardSkeleton />
           </div>
           <div className="h-8 w-64 bg-slate-200 rounded mb-6 animate-pulse" />
-          <MerchantGrid merchants={[]} loading={true} onMerchantActivate={() => {}} />
+          <MerchantGrid merchants={[]} loading={true} onSignIn={() => setAuthModal('login')} />
         </main>
       </div>
     );
@@ -208,7 +179,7 @@ function App() {
             <MerchantGrid
               merchants={filteredMerchants}
               loading={loading}
-              onMerchantActivate={handleMerchantActivate}
+              onSignIn={() => setAuthModal('login')}
             />
           </div>
         </section>

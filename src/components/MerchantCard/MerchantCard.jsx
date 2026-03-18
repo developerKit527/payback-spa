@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import PropTypes from 'prop-types';
-import { ExternalLink } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import styles from './MerchantCard.module.css';
 import { OFFER_TAGS, FEATURED_IDS } from '../../utils/offerTags';
+import { trackMerchantClick } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 
 // Deterministic color palette for logo fallbacks
 const FALLBACK_COLORS = [
@@ -30,17 +32,27 @@ export function MerchantCardSkeleton() {
 }
 
 /**
- * MerchantCard - Enhanced merchant card with offer tag, featured ribbon, hover lift
+ * MerchantCard - Navigates to merchant detail page for authenticated users,
+ * opens login modal for guests.
  */
-function MerchantCard({ merchant, onActivate }) {
+function MerchantCard({ merchant, onSignIn }) {
   const [isActivating, setIsActivating] = useState(false);
   const [imageError, setImageError] = useState(false);
+  const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
 
   const handleClick = async () => {
     if (isActivating) return;
+
+    if (!isAuthenticated) {
+      onSignIn?.();
+      return;
+    }
+
     setIsActivating(true);
     try {
-      await onActivate(merchant.id);
+      await trackMerchantClick(merchant.id).catch(() => {});
+      navigate(`/merchants/${merchant.id}`);
     } finally {
       setIsActivating(false);
     }
@@ -120,15 +132,7 @@ function MerchantCard({ merchant, onActivate }) {
         className="w-full bg-white border-2 border-primary text-primary py-3 px-6 rounded-lg font-semibold hover:bg-primary hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
         data-testid="shop-earn-button"
       >
-        {isActivating ? (
-          'Opening...'
-        ) : (
-          <>
-            Shop Now →
-            <ExternalLink className="w-4 h-4" />
-          </>
-        )}
-      </button>
+        {isActivating ? 'Loading...' : 'Shop Now →'}      </button>
     </div>
   );
 }
@@ -141,7 +145,11 @@ MerchantCard.propTypes = {
     cashbackRate: PropTypes.number.isRequired,
     manualTrackingUrl: PropTypes.string,
   }).isRequired,
-  onActivate: PropTypes.func.isRequired,
+  onSignIn: PropTypes.func,
+};
+
+MerchantCard.defaultProps = {
+  onSignIn: () => {},
 };
 
 export default MerchantCard;
