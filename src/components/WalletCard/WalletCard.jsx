@@ -44,11 +44,11 @@ function useCountUp(target, enabled = true) {
 }
 
 function WalletCard({ wallet, loading, error }) {
-  const availableBalance = parseFloat(wallet?.availableBalance) || 0;
+  const available = parseFloat(wallet?.available) || 0;
   const totalEarned = parseFloat(wallet?.totalEarned) || 0;
-  const pendingAmount = parseFloat(wallet?.pendingAmount) || 0;
+  const pending = parseFloat(wallet?.pending) || 0;
 
-  const availableRef = useCountUp(availableBalance, !loading && !error);
+  const availableRef = useCountUp(available, !loading && !error);
 
   if (loading) return <WalletCardSkeleton />;
 
@@ -80,7 +80,7 @@ function WalletCard({ wallet, loading, error }) {
         className="text-5xl font-black text-emerald-600 mb-6"
         data-testid="wallet-card-value"
       >
-        {formatCurrency(availableBalance)}
+        {formatCurrency(available)}
       </p>
 
       {/* Chips */}
@@ -94,7 +94,7 @@ function WalletCard({ wallet, loading, error }) {
         <div className="bg-amber-50 border border-amber-200 rounded-full px-4 py-2">
           <span className="text-xs text-slate-500 mr-1" data-testid="wallet-card-label-pending">Pending</span>
           <span className="text-amber-700 font-bold text-sm" data-testid="wallet-card-pending">
-            {formatCurrency(pendingAmount)}
+            {formatCurrency(pending)}
           </span>
         </div>
       </div>
@@ -105,8 +105,8 @@ function WalletCard({ wallet, loading, error }) {
 WalletCard.propTypes = {
   wallet: PropTypes.shape({
     totalEarned: PropTypes.number,
-    pendingAmount: PropTypes.number,
-    availableBalance: PropTypes.number,
+    pending: PropTypes.number,
+    available: PropTypes.number,
   }),
   loading: PropTypes.bool,
   error: PropTypes.string,

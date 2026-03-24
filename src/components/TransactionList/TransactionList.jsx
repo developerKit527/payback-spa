@@ -3,7 +3,7 @@ import PropTypes from 'prop-types';
 import { formatCurrency } from '../../utils/formatters';
 import styles from './TransactionList.module.css';
 
-const TransactionList = ({ transactions = [], loading = false, showHeading = true }) => {
+const TransactionList = ({ transactions = [], loading = false }) => {
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-IN', {
@@ -28,7 +28,7 @@ const TransactionList = ({ transactions = [], loading = false, showHeading = tru
   if (loading) {
     return (
       <div className={styles.container}>
-        {showHeading && <h2 className="text-2xl font-bold text-gray-900 mb-6">Transaction History</h2>}
+        <h2 className="text-2xl font-bold text-gray-900 mb-6">Transaction History</h2>
         <div className="space-y-4">
           {[1, 2, 3].map((i) => (
             <div key={i} className="bg-white rounded-lg p-4 animate-pulse">
@@ -44,7 +44,7 @@ const TransactionList = ({ transactions = [], loading = false, showHeading = tru
   if (!transactions || transactions.length === 0) {
     return (
       <div className={styles.container}>
-        {showHeading && <h2 className="text-2xl font-bold text-gray-900 mb-6">Transaction History</h2>}
+        <h2 className="text-2xl font-bold text-gray-900 mb-6">Transaction History</h2>
         <div className="bg-white rounded-lg p-8 text-center">
           <p className="text-gray-500">No transactions yet</p>
         </div>
@@ -54,7 +54,7 @@ const TransactionList = ({ transactions = [], loading = false, showHeading = tru
 
   return (
     <div className={styles.container}>
-      {showHeading && <h2 className="text-2xl font-bold text-gray-900 mb-6">Transaction History</h2>}
+      <h2 className="text-2xl font-bold text-gray-900 mb-6">Transaction History</h2>
       
       {/* Desktop Table View */}
       <div className="hidden md:block bg-white rounded-lg overflow-hidden shadow-sm">
@@ -127,8 +127,7 @@ TransactionList.propTypes = {
       createdAt: PropTypes.string.isRequired
     })
   ),
-  loading: PropTypes.bool,
-  showHeading: PropTypes.bool
+  loading: PropTypes.bool
 };
 
 export default TransactionList;
