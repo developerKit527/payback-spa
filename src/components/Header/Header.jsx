@@ -62,7 +62,7 @@ function Header({ wallet = null, searchQuery = '', onSearchChange, onSignIn, onJ
           {wallet && (
             <div className="hidden md:flex items-center gap-2 bg-white/20 border border-white/30 rounded-full px-5 py-2.5">
               <span className="text-base font-semibold text-white">
-                {formatCurrency(parseFloat(wallet.available) || 0)}
+                {formatCurrency(parseFloat(wallet.availableBalance) || 0)}
               </span>
             </div>
           )}

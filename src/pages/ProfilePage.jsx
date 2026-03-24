@@ -148,13 +148,13 @@ export default function ProfilePage() {
               <div className="flex flex-col gap-1">
                 <span className="text-slate-500 text-sm">Pending</span>
                 <span className="text-2xl font-bold text-amber-600">
-                  {formatCurrency(parseFloat(walletData?.pending) || 0)}
+                  {formatCurrency(parseFloat(walletData?.pendingAmount) || 0)}
                 </span>
               </div>
               <div className="flex flex-col gap-1">
                 <span className="text-slate-500 text-sm">Available for Payout</span>
                 <span className="text-2xl font-bold text-slate-900">
-                  {formatCurrency(parseFloat(walletData?.available) || 0)}
+                  {formatCurrency(parseFloat(walletData?.availableBalance) || 0)}
                 </span>
               </div>
             </div>
@@ -172,7 +172,7 @@ export default function ProfilePage() {
               <div className="h-12 bg-slate-200 rounded"></div>
             </div>
           ) : transactions.length > 0 ? (
-            <TransactionList transactions={transactions} loading={false} />
+            <TransactionList transactions={transactions} loading={false} showHeading={false} />
           ) : (
             <div className="text-center py-12">
               <Receipt className="w-16 h-16 text-slate-300 mx-auto mb-4" />
