@@ -19,7 +19,7 @@ import { MERCHANT_CATEGORIES } from './utils/merchantCategories';
 
 function App() {
   const { showToast } = useToast();
-  const { token, isAuthenticated } = useAuth();
+  const { token, isAuthenticated, logout } = useAuth();
   const { authModal, setAuthModal } = useAuthModal();
   const [wallet, setWallet] = useState(null);
   const [merchants, setMerchants] = useState([]);
@@ -45,14 +45,31 @@ function App() {
       setServerWaking(false);
 
       // Pass token so authenticated users get /wallet/me, others get /wallet/1
-      const [walletData, merchantsData] = await Promise.all([
-        getWallet(token),
-        getMerchants()
-      ]);
-      setWallet(walletData);
-      setMerchants(merchantsData);
-      setTransactions(walletData.transactions || []);
-      setError(null);
+      try {
+        const [walletData, merchantsData] = await Promise.all([
+          getWallet(isAuthenticated ? token : null),
+          getMerchants()
+        ]);
+        setWallet(walletData);
+        setMerchants(merchantsData);
+        setTransactions(walletData.transactions || []);
+        setError(null);
+      } catch (err) {
+        // Handle 401 errors gracefully by falling back to public wallet
+        if (err?.status === 401 || err?.response?.status === 401) {
+          logout();
+          const [walletData, merchantsData] = await Promise.all([
+            getWallet(null),
+            getMerchants()
+          ]);
+          setWallet(walletData);
+          setMerchants(merchantsData);
+          setTransactions(walletData.transactions || []);
+          setError(null);
+        } else {
+          throw err;
+        }
+      }
     } catch (err) {
       clearTimeout(wakingTimerRef.current);
       setServerWaking(false);
@@ -62,7 +79,7 @@ function App() {
     } finally {
       setLoading(false);
     }
-  }, [token, showToast]);
+  }, [token, showToast, logout, isAuthenticated]);
 
   // Re-fetch whenever auth state changes (login, logout, token restored)
   useEffect(() => {

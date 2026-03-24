@@ -733,3 +733,31 @@ The Payback SPA Frontend is a modern React-based single-page application that pr
     - Do NOT change `src/utils/merchantCategories.js` or `src/utils/offerTags.js`
     - Admin page reads JWT token from `useAuth()` hook — no separate auth system
     - Keep existing wallet state variable names in `App.jsx`
+
+
+---
+
+## Requirements: JWT Token Expiry Handling (REQ-053)
+
+### Requirement 53: Handle 401 Authentication Errors Gracefully
+
+**User Story:** As a user, I want the application to handle expired tokens gracefully, so that I can continue viewing public wallet data without disruption.
+
+#### Acceptance Criteria
+
+1. WHEN the fetchData_Function in src/App.jsx receives a 401 error from getWallet(token), THE Frontend SHALL catch the error
+2. WHEN a 401 error is caught, THE Frontend SHALL clear the JWT_Token from localStorage
+3. WHEN a 401 error is caught, THE Frontend SHALL call the logout_Function to reset Auth_State
+4. WHEN a 401 error is caught, THE Frontend SHALL call getWallet(null) to load the Public_Wallet
+5. WHEN getWallet(null) succeeds after a 401 error, THE Frontend SHALL display the Public_Wallet to the user
+6. WHEN the fetchData_Function receives an error that is not a 401 error, THE Frontend SHALL handle it according to existing error handling logic
+7. THE Frontend SHALL distinguish between 401 authentication errors and other error types (checking both err?.status === 401 and err?.response?.status === 401)
+
+#### Glossary Terms
+
+- **JWT_Token**: JSON Web Token used for authenticating API requests
+- **Auth_State**: The authentication state maintained in the Frontend including token and user session
+- **Public_Wallet**: The wallet view accessible without authentication using getWallet(null)
+- **Private_Wallet**: The authenticated wallet view accessed using getWallet(token)
+- **fetchData_Function**: The function in src/App.jsx responsible for loading wallet data
+- **logout_Function**: The function that clears authentication state in the Frontend

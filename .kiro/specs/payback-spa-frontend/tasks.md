@@ -866,3 +866,43 @@ This implementation plan breaks down the Payback SPA Frontend into discrete, inc
   - Verify `/admin` route shows password gate, then transaction table after correct password
   - Verify Confirm/Reject buttons update status and refresh the list
   - Ask the user if questions arise before writing any code
+
+
+---
+
+## Tasks: JWT Token Expiry Handling (Requirement 53)
+
+- [ ] 56. Implement graceful 401 error handling in App.jsx
+  - [ ] 56.1 Update fetchData function with try-catch for 401 handling
+    - Wrap `getWallet(token)` call in try-catch block
+    - Check for 401 status in both `err?.status` and `err?.response?.status`
+    - On 401: call `logout()` to clear auth state, then call `getWallet(null)` to load public wallet data
+    - Update wallet state with public wallet data after 401 fallback
+    - Preserve existing error handling for non-401 errors (show toast, set error state)
+    - Do NOT show error toast for 401 errors (silent degradation to public wallet)
+    - _Requirements: 53.1, 53.2, 53.3, 53.4_
+
+  - [ ]* 56.2 Write unit tests for 401 error handling
+    - Test that 401 error triggers `logout()` call
+    - Test that 401 error falls back to `getWallet(null)` call
+    - Test that non-401 errors don't trigger `logout()`
+    - Test that wallet state is updated correctly after 401 fallback
+    - Test that 401 errors don't show error toast
+    - Test that non-401 errors show error toast
+    - _Requirements: 53.1, 53.2, 53.3, 53.4_
+
+  - [ ]* 56.3 Write property-based tests for 401 handling
+    - **Property 34: 401 Error Graceful Degradation**
+    - **Validates: Requirements 53.1, 53.2, 53.3**
+    - Test that any 401 error results in logout + public wallet fallback without error toast
+    
+    - **Property 35: Non-401 Error Handling Preservation**
+    - **Validates: Requirements 53.4**
+    - Test that non-401 errors preserve existing error handling (toast + no logout)
+
+- [ ] 57. Final checkpoint — Requirement 53
+  - Run `npm test -- --run` and confirm all tests pass
+  - Verify 401 error triggers logout and loads public wallet without error toast
+  - Verify non-401 errors show error toast and don't trigger logout
+  - Verify wallet state updates correctly after 401 fallback
+  - Ask the user if questions arise before writing any code

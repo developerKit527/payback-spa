@@ -2462,3 +2462,201 @@ After any successful `createTransaction` call on `MerchantDetailPage`, a `wallet
 **Property 33: Admin Password Gate**
 For any password value that is not exactly `'payback@admin2026'`, the AdminPage SHALL NOT fetch transactions and SHALL display an inline error. Only the exact correct password SHALL unlock the page.
 *Validates: Req 52.2, 52.3*
+
+
+---
+
+## Design Additions: JWT Token Expiry Handling (Requirement 53)
+
+### Overview
+
+When a JWT token expires, the backend API returns a 401 Unauthorized response. Rather than showing an error or forcing the user to re-login, the application gracefully degrades to public wallet mode, allowing the user to continue browsing merchants and viewing public wallet data without disruption.
+
+### Error Handling in fetchData Function
+
+**File**: `src/App.jsx`
+
+**Current flow** (before 401 handling):
+```javascript
+const fetchData = async () => {
+  try {
+    const walletData = await getWallet(isAuthenticated ? token : null);
+    setWalletData(walletData);
+    setTransactions(walletData.transactions || []);
+  } catch (err) {
+    showToast('Failed to load wallet data', 'error');
+  }
+};
+```
+
+**Updated flow** (with 401 handling):
+```javascript
+const fetchData = async () => {
+  try {
+    const walletData = await getWallet(isAuthenticated ? token : null);
+    setWalletData(walletData);
+    setTransactions(walletData.transactions || []);
+  } catch (err) {
+    // Check for 401 authentication error
+    if (err?.status === 401 || err?.response?.status === 401) {
+      // Token expired - gracefully degrade to public mode
+      logout(); // clears localStorage and resets auth state
+      
+      // Load public wallet data
+      try {
+        const publicWalletData = await getWallet(null);
+        setWalletData(publicWalletData);
+        setTransactions(publicWalletData.transactions || []);
+        // No error toast - silent degradation for better UX
+      } catch (publicErr) {
+        // If public wallet also fails, show error
+        showToast('Failed to load wallet data', 'error');
+      }
+    } else {
+      // Non-401 errors: existing error handling
+      showToast('Failed to load wallet data', 'error');
+    }
+  }
+};
+```
+
+### Implementation Pattern
+
+**Try-Catch Structure**:
+```javascript
+try {
+  // Attempt authenticated wallet fetch
+  const walletData = await getWallet(token);
+  // ... set state
+} catch (err) {
+  if (err?.status === 401 || err?.response?.status === 401) {
+    // 401 handling: logout + fallback to public wallet
+    logout();
+    const publicWalletData = await getWallet(null);
+    // ... set state with public data
+  } else {
+    // Other errors: existing error handling
+  }
+}
+```
+
+**Key design decisions**:
+- **Dual 401 check**: Checks both `err?.status` and `err?.response?.status` to handle different Axios error structures
+- **Silent degradation**: No error toast shown for expired tokens - the user simply sees public wallet data
+- **Nested try-catch**: The fallback `getWallet(null)` call is wrapped in its own try-catch to handle cases where even the public endpoint fails
+- **State consistency**: After 401 handling, the app state is identical to an unauthenticated user viewing public data
+
+### State Management After 401
+
+**Auth state changes** (via `logout()` function):
+```javascript
+// From AuthContext.logout()
+localStorage.removeItem('payback_token');
+setToken(null);
+setUser(null);
+setIsAuthenticated(false);
+```
+
+**UI state changes**:
+- Navbar: "Hi, {firstName}" chip → "Sign In" / "Join Now" buttons
+- Wallet section: Personal wallet → Public wallet (User ID 1)
+- Transaction History: Hidden (since `isAuthenticated` is now false)
+- Merchant cards: Continue to work normally (no auth required for browsing)
+
+### Error Type Distinction
+
+**401 errors** (authentication failures):
+- Token expired
+- Token invalid
+- Token missing when required
+- **Handling**: Silent logout + public wallet fallback
+
+**Non-401 errors** (other failures):
+- Network errors (no connection)
+- Timeout errors (request took too long)
+- 500 server errors (backend crash)
+- 404 not found (endpoint missing)
+- **Handling**: Existing error toast + retry mechanism
+
+### Data Flow Diagram
+
+```
+User opens app with expired token
+  ↓
+fetchData() called with token
+  ↓
+getWallet(token) → 401 Unauthorized
+  ↓
+catch block detects 401
+  ↓
+logout() → clear localStorage + reset auth state
+  ↓
+getWallet(null) → fetch public wallet
+  ↓
+setWalletData(publicWallet)
+  ↓
+UI updates: navbar shows "Sign In", wallet shows public data
+  ↓
+User continues browsing (no disruption)
+```
+
+### Integration with Existing Error Handling
+
+**Existing error handling** (preserved for non-401 errors):
+- Toast notifications for network failures
+- Retry buttons for failed operations
+- Loading states during async operations
+- Error boundaries for component crashes
+
+**New 401 handling** (added):
+- Silent logout on token expiry
+- Automatic fallback to public wallet
+- No user-facing error message
+- Seamless transition to unauthenticated state
+
+### Testing Considerations
+
+**Unit tests** should verify:
+- 401 error triggers logout()
+- 401 error triggers getWallet(null) call
+- Public wallet data is set after 401
+- Non-401 errors still show error toast
+- Both err?.status and err?.response?.status are checked
+
+**Property tests** should verify:
+- For any 401 error, localStorage is cleared
+- For any 401 error, auth state is reset
+- For any 401 error, public wallet is loaded
+- For any non-401 error, existing error handling applies
+
+### Constraints
+
+**Files modified**:
+- `src/App.jsx` only (fetchData function)
+
+**Files unchanged**:
+- `src/services/api.js` (no changes to error propagation)
+- `src/context/AuthContext.jsx` (logout function already exists)
+- `src/context/ToastContext.jsx` (no changes needed)
+- All other components (no changes needed)
+
+**Backward compatibility**:
+- Existing error handling for non-401 errors is preserved
+- Existing logout() function is reused (no new auth logic)
+- Existing getWallet(null) pattern is reused (no new API calls)
+
+### New Correctness Property
+
+**Property 34: 401 Error Graceful Degradation**
+
+*For any* API call to `getWallet(token)` that returns a 401 error, the application SHALL call `logout()` to clear auth state, then call `getWallet(null)` to load public wallet data, and SHALL NOT display an error toast to the user.
+
+**Validates: Requirements 53.1, 53.2, 53.3, 53.4, 53.5**
+
+---
+
+**Property 35: Non-401 Error Handling Preservation**
+
+*For any* API call to `getWallet(token)` that returns a non-401 error (network error, timeout, 500, etc.), the application SHALL display an error toast and SHALL NOT call `logout()` or attempt to load public wallet data.
+
+**Validates: Requirements 53.6, 53.7**
