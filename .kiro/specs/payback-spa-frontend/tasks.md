@@ -906,3 +906,154 @@ This implementation plan breaks down the Payback SPA Frontend into discrete, inc
   - Verify non-401 errors show error toast and don't trigger logout
   - Verify wallet state updates correctly after 401 fallback
   - Ask the user if questions arise before writing any code
+
+
+---
+
+## Tasks: Search, Calculator Integration, Profile Page (Requirements 54–56)
+
+- [ ] 58. Implement Search Functionality (Requirement 54)
+  - [ ] 58.1 Add search state and filter logic in App.jsx
+    - Add `searchQuery` state variable
+    - Implement filter logic: search first, then category filter
+    - Case-insensitive matching using `.toLowerCase()`
+    - Pass `searchQuery` and `onSearchChange` to Header component
+    - _Requirements: 54.1, 54.2, 54.3, 54.4, 54.5, 54.7_
+
+  - [ ] 58.2 Wire search input in Header component
+    - Accept `searchQuery` and `onSearchChange` props
+    - Wire existing search input to controlled state
+    - Ensure responsive behavior (hidden on mobile)
+    - _Requirements: 54.1, 54.5_
+
+  - [ ] 58.3 Add empty state to MerchantGrid
+    - Show "No merchants found" message when filtered array is empty
+    - Display SearchX icon and helpful text
+    - Add "Clear all filters" button when search or category is active
+    - _Requirements: 54.6_
+
+  - [ ]* 58.4 Write unit tests for search functionality
+    - Test search filter accuracy (case-insensitive matching)
+    - Test search + category filter composition
+    - Test empty state display
+    - Test clear filters button
+
+  - [ ]* 58.5 Write property-based tests for search
+    - **Property 35: Search Filter Accuracy**
+    - **Validates: Requirements 54.2, 54.3, 54.4**
+    - Test that search filters merchants by name case-insensitively
+    
+    - **Property 36: Search + Category Filter Composition**
+    - **Validates: Requirements 54.7**
+    - Test that search and category filters compose correctly (search first, then category)
+
+- [ ] 59. Wire Cashback Calculator to Transaction Creation (Requirement 55)
+  - [ ] 59.1 Update MerchantDetailPage to use calculator amount
+    - Lift calculator amount state to MerchantDetailPage
+    - Pass amount state to CashbackCalculator component
+    - Update `handleCalculatorActivate` to use entered amount or default 1000
+    - Add validation for positive amounts
+    - Calculate cashback as `orderAmount × (cashbackRate / 100)`
+    - _Requirements: 55.1, 55.2, 55.3, 55.6, 55.7_
+
+  - [ ] 59.2 Update CashbackCalculator component
+    - Accept controlled `amount` and `onAmountChange` props
+    - Update CTA button text dynamically based on amount
+    - Show "Shop on {Merchant} & Earn ₹XX →" when amount entered
+    - Show "Activate Cashback & Shop →" when no amount
+    - _Requirements: 55.1, 55.2, 55.3_
+
+  - [ ] 59.3 Remove hardcoded orderAmount from transaction creation
+    - Ensure no hardcoded ₹1000 in calculator flow
+    - Category and offer clicks continue using default 1000
+    - _Requirements: 55.5_
+
+  - [ ]* 59.4 Write unit tests for calculator integration
+    - Test transaction creation with entered amount
+    - Test default amount when input is empty
+    - Test amount validation (positive numbers only)
+    - Test cashback calculation accuracy
+
+  - [ ]* 59.5 Write property-based tests for calculator
+    - **Property 37: Calculator Amount Transaction Creation**
+    - **Validates: Requirements 55.1, 55.2, 55.6**
+    - Test that entered calculator amount is used in transaction creation
+    
+    - **Property 38: Cashback Calculation Accuracy**
+    - **Validates: Requirements 55.7**
+    - Test that cashback calculation is accurate for any positive amount
+
+- [ ] 60. Implement Profile Page (Requirement 56)
+  - [ ] 60.1 Add profile route and API method
+    - Add `/profile` route in main.jsx
+    - Add `updateUserProfile(name, token)` to api.js
+    - _Requirements: 56.1, 56.6_
+
+  - [ ] 60.2 Create ProfilePage component
+    - Create `src/pages/ProfilePage.jsx`
+    - Implement auth guard (redirect if not authenticated)
+    - Fetch wallet data from `/wallet/me` on mount
+    - _Requirements: 56.1, 56.8, 56.9, 56.10_
+
+  - [ ] 60.3 Implement Profile Card section
+    - Display user name, email, and avatar with initials
+    - Add "Edit Name" button to toggle edit mode
+    - Implement inline name editing with input field
+    - Add Save and Cancel buttons in edit mode
+    - _Requirements: 56.2, 56.5_
+
+  - [ ] 60.4 Implement name update handler
+    - Call `updateUserProfile` API on save
+    - Update AuthContext user state after successful update
+    - Show success toast on update
+    - Show error toast on failure
+    - _Requirements: 56.6, 56.7_
+
+  - [ ] 60.5 Add updateUser function to AuthContext
+    - Add `updateUser(updatedUserData)` function
+    - Update user state without requiring page refresh
+    - Export in context value
+    - _Requirements: 56.7_
+
+  - [ ] 60.6 Implement Wallet Summary section
+    - Display total earned, pending, and available balances
+    - Use three-column grid layout (responsive)
+    - Show loading skeleton while fetching
+    - _Requirements: 56.3_
+
+  - [ ] 60.7 Implement Transaction History section
+    - Reuse existing TransactionList component
+    - Show empty state when no transactions
+    - Add "Start shopping" link in empty state
+    - _Requirements: 56.4_
+
+  - [ ] 60.8 Add profile navigation links
+    - Update MobileBottomNav Profile tab to navigate to /profile
+    - Add profile link in desktop Header when authenticated
+    - _Requirements: 56.1_
+
+  - [ ]* 60.9 Write unit tests for profile page
+    - Test auth guard redirect
+    - Test profile data fetching
+    - Test name update flow
+    - Test empty state display
+
+  - [ ]* 60.10 Write property-based tests for profile
+    - **Property 39: Profile Page Auth Guard**
+    - **Validates: Requirements 56.8**
+    - Test that unauthenticated users are redirected from profile page
+    
+    - **Property 40: Profile Name Update Persistence**
+    - **Validates: Requirements 56.6, 56.7**
+    - Test that name updates persist in AuthContext without page refresh
+    
+    - **Property 41: Profile Data Source**
+    - **Validates: Requirements 56.9, 56.10**
+    - Test that profile page fetches wallet data from `/wallet/me` endpoint
+
+- [ ] 61. Final checkpoint — Requirements 54, 55, 56
+  - Run `npm test -- --run` and confirm all tests pass
+  - Verify search filters merchants in real-time
+  - Verify calculator uses entered amount for transactions
+  - Verify profile page displays user data and allows name editing
+  - Ask the user if questions arise before writing any code

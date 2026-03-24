@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import PropTypes from 'prop-types';
-import { Search, Wallet, LogOut } from 'lucide-react';
+import { Search, Wallet, LogOut, User } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatters';
 import { useAuth } from '../../context/AuthContext';
 
@@ -8,12 +9,15 @@ import { useAuth } from '../../context/AuthContext';
  * Header - Global navigation header component
  * @param {Object} props
  * @param {Object} props.wallet - Wallet data for displaying balance
+ * @param {string} props.searchQuery - Current search query
+ * @param {Function} props.onSearchChange - Handler for search input changes
  * @param {Function} props.onSignIn - Opens login modal
  * @param {Function} props.onJoinNow - Opens register modal
  */
-function Header({ wallet = null, onSignIn, onJoinNow }) {
+function Header({ wallet = null, searchQuery = '', onSearchChange, onSignIn, onJoinNow }) {
   const [scrolled, setScrolled] = useState(false);
   const { isAuthenticated, user, logout } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 10);
@@ -46,6 +50,8 @@ function Header({ wallet = null, onSignIn, onJoinNow }) {
             <input
               type="text"
               placeholder="Search stores, brands, or categories..."
+              value={searchQuery}
+              onChange={(e) => onSearchChange(e.target.value)}
               className="block w-full pl-11 pr-4 py-3.5 bg-white/20 border border-white/30 rounded-2xl text-lg text-white placeholder:text-white/70 focus:outline-none focus:bg-white focus:text-slate-900 focus:placeholder:text-slate-400 transition-all"
             />
           </div>
@@ -66,6 +72,13 @@ function Header({ wallet = null, onSignIn, onJoinNow }) {
               <span className="bg-white/20 border border-white/30 text-white rounded-full px-5 py-2.5 text-base font-semibold">
                 Hi, {user?.firstName}
               </span>
+              <button
+                onClick={() => navigate('/profile')}
+                aria-label="Profile"
+                className="text-white/80 hover:text-white transition-colors"
+              >
+                <User className="w-6 h-6" />
+              </button>
               <button
                 onClick={logout}
                 aria-label="Logout"
@@ -102,6 +115,8 @@ Header.propTypes = {
     totalEarned: PropTypes.number,
     pending: PropTypes.number,
   }),
+  searchQuery: PropTypes.string,
+  onSearchChange: PropTypes.func,
   onSignIn: PropTypes.func,
   onJoinNow: PropTypes.func,
 };

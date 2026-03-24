@@ -1,14 +1,12 @@
-import React, { useState } from 'react';
+import React from 'react';
 import PropTypes from 'prop-types';
 import styles from './CashbackCalculator.module.css';
 
-function CashbackCalculator({ cashbackRate, merchantName, onActivate }) {
-  const [inputAmount, setInputAmount] = useState('');
+function CashbackCalculator({ cashbackRate, merchantName, amount, onAmountChange, onActivate, disabled }) {
+  const orderAmount = parseFloat(amount) || 0;
+  const cashback = orderAmount * (cashbackRate / 100);
 
-  const amount = parseFloat(inputAmount) || 0;
-  const cashback = amount * (cashbackRate / 100);
-
-  const ctaText = amount > 0
+  const ctaText = orderAmount > 0
     ? `Shop on ${merchantName} & Earn ₹${cashback.toFixed(2)} →`
     : 'Activate Cashback & Shop →';
 
@@ -25,8 +23,8 @@ function CashbackCalculator({ cashbackRate, merchantName, onActivate }) {
         <input
           type="number"
           min="0"
-          value={inputAmount}
-          onChange={(e) => setInputAmount(e.target.value)}
+          value={amount}
+          onChange={(e) => onAmountChange(e.target.value)}
           placeholder="0"
           className={styles.amountInput}
           aria-label="Spend amount"
@@ -41,7 +39,8 @@ function CashbackCalculator({ cashbackRate, merchantName, onActivate }) {
 
       <button
         className={styles.ctaButton}
-        onClick={() => onActivate(amount)}
+        onClick={onActivate}
+        disabled={disabled}
         aria-label={ctaText}
       >
         {ctaText}
@@ -53,7 +52,14 @@ function CashbackCalculator({ cashbackRate, merchantName, onActivate }) {
 CashbackCalculator.propTypes = {
   cashbackRate: PropTypes.number.isRequired,
   merchantName: PropTypes.string.isRequired,
+  amount: PropTypes.string.isRequired,
+  onAmountChange: PropTypes.func.isRequired,
   onActivate: PropTypes.func.isRequired,
+  disabled: PropTypes.bool,
+};
+
+CashbackCalculator.defaultProps = {
+  disabled: false,
 };
 
 export default CashbackCalculator;

@@ -5,6 +5,7 @@ import './index.css'
 import App from './App.jsx'
 import MerchantDetailPage from './pages/MerchantDetailPage.jsx'
 import AdminPage from './pages/AdminPage.jsx'
+import ProfilePage from './pages/ProfilePage.jsx'
 import { ToastProvider } from './context/ToastContext'
 import { AuthProvider } from './context/AuthContext'
 import { AuthModalProvider } from './context/AuthModalContext'
@@ -20,6 +21,7 @@ createRoot(document.getElementById('root')).render(
               <Route path="/" element={<App />} />
               <Route path="/merchants/:id" element={<MerchantDetailPage />} />
               <Route path="/admin" element={<AdminPage />} />
+              <Route path="/profile" element={<ProfilePage />} />
             </Routes>
           </BrowserRouter>
           <Toast />

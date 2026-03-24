@@ -144,4 +144,19 @@ export const updateTransactionStatus = async (transactionId, status, token) => {
   return response.data;
 };
 
+/**
+ * Update user profile (display name)
+ * @param {string} name - New display name
+ * @param {string} token - JWT token
+ * @returns {Promise} Updated UserDTO
+ */
+export const updateUserProfile = async (name, token) => {
+  const response = await apiClient.put(
+    '/users/me',
+    { name },
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  return response.data;
+};
+
 export default apiClient;

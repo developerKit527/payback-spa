@@ -761,3 +761,70 @@ The Payback SPA Frontend is a modern React-based single-page application that pr
 - **Private_Wallet**: The authenticated wallet view accessed using getWallet(token)
 - **fetchData_Function**: The function in src/App.jsx responsible for loading wallet data
 - **logout_Function**: The function that clears authentication state in the Frontend
+
+
+---
+
+## Requirements: Search, Calculator Integration, Profile Page (REQ-054–056)
+
+### Requirement 54: Search Functionality
+
+**User Story:** As a user, I want to search for merchants by name in real-time, so that I can quickly find specific merchants without scrolling through the entire list.
+
+#### Acceptance Criteria
+
+1. WHEN a user types in the search bar in the navbar, THE Frontend SHALL filter the Merchant_Grid in real-time
+2. THE Frontend SHALL match merchant names case-insensitively against the Search_Query
+3. WHEN the Search_Query matches merchant names, THE Frontend SHALL display only matching merchants in the grid
+4. WHEN the Search_Query is cleared or empty, THE Frontend SHALL display all merchants
+5. THE Frontend SHALL update the filtered results as the user types (no submit button required)
+6. WHEN no merchants match the Search_Query, THE Frontend SHALL display an appropriate "no results" message
+7. THE search functionality SHALL work in combination with category filters (search within active category)
+
+#### Glossary Terms
+
+- **Search_Query**: The text input by the user in the search bar to filter merchants
+- **Merchant_Grid**: The grid display of merchant cards on the main page
+
+### Requirement 55: Wire Cashback Calculator to Transaction Creation
+
+**User Story:** As a user, I want to enter my actual spend amount in the cashback calculator and have that amount used when creating the transaction, so that my cashback is calculated correctly based on my real purchase amount.
+
+#### Acceptance Criteria
+
+1. WHEN a user enters an amount in the Cashback_Calculator on the merchant detail page, THE Frontend SHALL calculate the cashback based on the merchant's cashback rate
+2. WHEN a user clicks the "Shop on [Merchant] & Earn ₹[amount]" button, THE Frontend SHALL create a transaction with the Order_Amount set to the user-entered amount
+3. THE Frontend SHALL calculate Cashback_Amount as Order_Amount × (merchant cashback rate / 100)
+4. WHEN the transaction is created successfully, THE Frontend SHALL open the merchant's website in a new tab
+5. THE Frontend SHALL NOT use hardcoded amounts (like ₹1000) for transaction creation
+6. WHEN a user has not entered an amount, THE Frontend SHALL use a default amount or prompt the user to enter an amount
+7. THE Frontend SHALL validate that the entered amount is a positive number before creating the transaction
+
+#### Glossary Terms
+
+- **Cashback_Calculator**: The input field and display on merchant detail page showing calculated cashback
+- **Order_Amount**: The actual purchase amount entered by the user
+- **Cashback_Amount**: The calculated cashback based on order amount and merchant rate
+
+### Requirement 56: Profile Page
+
+**User Story:** As a user, I want to view my profile with my account details, wallet summary, and transaction history, so that I can manage my account and track my earnings in one place.
+
+#### Acceptance Criteria
+
+1. THE Frontend SHALL provide a Profile_Page accessible at /profile route
+2. WHEN a user navigates to /profile, THE Frontend SHALL display the user's name and email
+3. THE Frontend SHALL display a Wallet_Summary showing total earned, pending balance, and available balance
+4. THE Frontend SHALL display all user transactions with their status (pending, approved, rejected)
+5. THE Frontend SHALL provide an "Edit Display Name" feature allowing users to update their Display_Name
+6. WHEN a user updates their Display_Name, THE Frontend SHALL send the update to the Backend_API
+7. WHEN the display name update succeeds, THE Frontend SHALL update the displayed name without requiring a page refresh
+8. THE Frontend SHALL require authentication to access the Profile_Page
+9. WHEN an unauthenticated user tries to access /profile, THE Frontend SHALL redirect to the login page
+10. THE Frontend SHALL fetch the user's profile data from the Backend_API on page load
+
+#### Glossary Terms
+
+- **Profile_Page**: The page at /profile showing user account details and transaction history
+- **Display_Name**: The user's customizable name shown in the UI (can differ from registered name)
+- **Wallet_Summary**: The aggregated view of total earned, pending, and available balances

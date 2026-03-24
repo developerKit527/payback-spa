@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Home, Store, Wallet, User } from 'lucide-react';
-
-const TABS = [
-  { id: 'home',    label: 'Home',   Icon: Home,   action: () => window.scrollTo({ top: 0, behavior: 'smooth' }) },
-  { id: 'stores',  label: 'Stores', Icon: Store,  action: () => document.getElementById('merchant-grid')?.scrollIntoView({ behavior: 'smooth' }) },
-  { id: 'wallet',  label: 'Wallet', Icon: Wallet, action: () => window.scrollTo({ top: 0, behavior: 'smooth' }) },
-  { id: 'profile', label: 'Profile',Icon: User,   action: null }, // placeholder
-];
 
 function MobileBottomNav() {
   const [activeTab, setActiveTab] = useState('home');
+  const navigate = useNavigate();
+
+  const TABS = [
+    { id: 'home',    label: 'Home',   Icon: Home,   action: () => { navigate('/'); window.scrollTo({ top: 0, behavior: 'smooth' }); } },
+    { id: 'stores',  label: 'Stores', Icon: Store,  action: () => { navigate('/'); setTimeout(() => document.getElementById('merchant-grid')?.scrollIntoView({ behavior: 'smooth' }), 100); } },
+    { id: 'wallet',  label: 'Wallet', Icon: Wallet, action: () => { navigate('/'); window.scrollTo({ top: 0, behavior: 'smooth' }); } },
+    { id: 'profile', label: 'Profile',Icon: User,   action: () => navigate('/profile') },
+  ];
 
   return (
     <nav
@@ -27,7 +29,7 @@ function MobileBottomNav() {
                 action?.();
               }}
               className={`flex-1 flex flex-col items-center py-3 gap-1 transition-colors ${
-                isActive ? 'text-primary border-t-2 border-primary' : 'text-gray-500'
+                isActive ? 'text-emerald-500 border-t-2 border-emerald-500' : 'text-gray-500'
               }`}
               data-testid={`nav-tab-${id}`}
               aria-label={label}

@@ -63,6 +63,14 @@ export function AuthProvider({ children }) {
     showToast('Logged out successfully', 'info');
   };
 
+  const updateUser = (updatedUserData) => {
+    setUser(prev => ({
+      ...prev,
+      ...updatedUserData,
+      firstName: updatedUserData.name?.split(' ')[0] || prev?.firstName || 'User',
+    }));
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -72,6 +80,7 @@ export function AuthProvider({ children }) {
         login,
         register,
         logout,
+        updateUser,
       }}
     >
       {children}

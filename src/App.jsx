@@ -25,14 +25,20 @@ function App() {
   const [merchants, setMerchants] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [activeCategory, setActiveCategory] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [serverWaking, setServerWaking] = useState(false);
   const wakingTimerRef = useRef(null);
 
-  const filteredMerchants = activeCategory
-    ? merchants.filter(m => MERCHANT_CATEGORIES[m.name] === activeCategory)
+  // Filter by search query first, then by category
+  const searchFiltered = searchQuery.trim()
+    ? merchants.filter(m => m.name.toLowerCase().includes(searchQuery.toLowerCase()))
     : merchants;
+
+  const filteredMerchants = activeCategory
+    ? searchFiltered.filter(m => MERCHANT_CATEGORIES[m.name] === activeCategory)
+    : searchFiltered;
 
   const fetchData = useCallback(async () => {
     try {
@@ -142,6 +148,8 @@ function App() {
     <div className="min-h-screen bg-slate-50">
       <Header
         wallet={wallet}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
         onSignIn={() => setAuthModal('login')}
         onJoinNow={() => setAuthModal('register')}
       />
@@ -212,6 +220,12 @@ function App() {
             <MerchantGrid
               merchants={filteredMerchants}
               loading={loading}
+              searchQuery={searchQuery}
+              activeCategory={activeCategory}
+              onClearFilters={() => {
+                setSearchQuery('');
+                setActiveCategory(null);
+              }}
             />
           </div>
         </section>

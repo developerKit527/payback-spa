@@ -2660,3 +2660,678 @@ User continues browsing (no disruption)
 *For any* API call to `getWallet(token)` that returns a non-401 error (network error, timeout, 500, etc.), the application SHALL display an error toast and SHALL NOT call `logout()` or attempt to load public wallet data.
 
 **Validates: Requirements 53.6, 53.7**
+
+
+*Validates: Req 53.1, 53.2, 53.3, 53.4, 53.5*
+
+
+---
+
+## Design Additions: Search, Calculator Integration, Profile Page (Requirements 54–56)
+
+### Search Functionality (Req 54)
+
+#### Implementation Approach
+
+Search is implemented as a real-time filter on the merchant list, with state managed in `App.jsx` and passed down to the `Header` component. The search works in combination with category filters, allowing users to search within a selected category.
+
+#### State Management
+
+**File**: `src/App.jsx`
+
+**New state variable**:
+```javascript
+const [searchQuery, setSearchQuery] = useState('');
+```
+
+**Filter logic** (applied before category filter):
+```javascript
+// Step 1: Filter by search query (case-insensitive)
+const searchFiltered = searchQuery.trim()
+  ? merchants.filter(m => 
+      m.name.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+  : merchants;
+
+// Step 2: Filter by active category (if any)
+const filteredMerchants = activeCategory
+  ? searchFiltered.filter(m => MERCHANT_CATEGORIES[m.name] === activeCategory)
+  : searchFiltered;
+```
+
+**Props passed to Header**:
+```javascript
+<Header
+  availableBalance={walletData?.available}
+  searchQuery={searchQuery}
+  onSearchChange={setSearchQuery}
+  // ... other props
+/>
+```
+
+#### Header Component Updates
+
+**File**: `src/components/Header/Header.jsx`
+
+**New props**:
+```javascript
+{
+  searchQuery: string,
+  onSearchChange: (query: string) => void
+}
+```
+
+**Search input wiring**:
+```jsx
+<input
+  type="text"
+  placeholder="Search merchants..."
+  value={searchQuery}
+  onChange={(e) => onSearchChange(e.target.value)}
+  className="bg-slate-100 rounded-2xl px-4 py-2 text-sm focus:outline-none 
+             focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 
+             transition-all w-full max-w-md"
+/>
+```
+
+**Responsive behavior**: Search input is hidden on mobile (`hidden md:block`) as per existing design.
+
+#### Empty State Handling
+
+**File**: `src/components/MerchantGrid/MerchantGrid.jsx`
+
+**Empty state** (when `filteredMerchants.length === 0`):
+```jsx
+{filteredMerchants.length === 0 && !loading && (
+  <div className="col-span-full flex flex-col items-center justify-center py-16 gap-4">
+    <SearchX className="w-16 h-16 text-slate-300" />
+    <h3 className="text-xl font-semibold text-slate-700">No merchants found</h3>
+    <p className="text-slate-500 text-sm">
+      Try adjusting your search or category filter
+    </p>
+    {(searchQuery || activeCategory) && (
+      <button
+        onClick={() => {
+          setSearchQuery('');
+          setActiveCategory(null);
+        }}
+        className="text-emerald-600 hover:text-emerald-700 font-medium text-sm"
+      >
+        Clear all filters
+      </button>
+    )}
+  </div>
+)}
+```
+
+#### Search + Category Filter Interaction
+
+**Combined filter behavior**:
+1. User types "flip" in search → shows only merchants with "flip" in name
+2. User clicks "Electronics" category → shows only electronics merchants with "flip" in name
+3. User clears search → shows all electronics merchants
+4. User clears category → shows all merchants
+
+**Filter order matters**: Search is applied first, then category filter is applied to the search results. This ensures the category filter only operates on the already-filtered search results.
+
+#### Performance Considerations
+
+**Debouncing**: Not implemented in MVP since the merchant list is small (<100 merchants). If the list grows, add a debounce hook:
+```javascript
+const debouncedSearchQuery = useDebounce(searchQuery, 300);
+```
+
+**Case-insensitive matching**: Uses `.toLowerCase()` on both search query and merchant names for consistent matching regardless of user input case.
+
+---
+
+### Wire Cashback Calculator to Transaction Creation (Req 55)
+
+#### Current State
+
+The `CashbackCalculator` component already exists on `MerchantDetailPage` with an `inputAmount` state variable that tracks the user-entered amount. However, transaction creation currently uses a hardcoded `orderAmount` of `1000`.
+
+#### Implementation Changes
+
+**File**: `src/pages/MerchantDetailPage.jsx`
+
+**Updated transaction creation flow**:
+
+```javascript
+// State already exists in CashbackCalculator
+const [calculatorAmount, setCalculatorAmount] = useState('');
+
+// Pass amount state to calculator
+<CashbackCalculator
+  cashbackRate={merchant.cashbackRate}
+  merchantName={merchant.name}
+  amount={calculatorAmount}
+  onAmountChange={setCalculatorAmount}
+  onActivate={handleCalculatorActivate}
+/>
+
+// New handler for calculator CTA button
+const handleCalculatorActivate = async () => {
+  if (isActivating) return;
+  if (!isAuthenticated) {
+    setAuthModal('login');
+    return;
+  }
+
+  // Use entered amount or default to 1000
+  const orderAmount = parseFloat(calculatorAmount) || 1000;
+  
+  // Validate amount is positive
+  if (orderAmount <= 0) {
+    showToast('Please enter a valid amount', 'error');
+    return;
+  }
+
+  setIsActivating(true);
+  try {
+    const tx = await createTransaction(merchant.id, orderAmount, token);
+    const cashbackAmount = tx?.cashbackAmount ?? (orderAmount * merchant.cashbackRate / 100).toFixed(2);
+    
+    // Open merchant website
+    window.open(merchant.websiteUrl || merchant.manualTrackingUrl, '_blank');
+    
+    showToast(`Cashback activated! You'll earn ₹${cashbackAmount}`, 'success');
+    
+    // Refresh wallet
+    window.dispatchEvent(new Event('walletUpdated'));
+  } catch (err) {
+    showToast('Could not record transaction', 'error');
+    // Still open URL on error
+    window.open(merchant.websiteUrl || merchant.manualTrackingUrl, '_blank');
+  } finally {
+    setIsActivating(false);
+  }
+};
+```
+
+#### CashbackCalculator Component Updates
+
+**File**: `src/components/CashbackCalculator/CashbackCalculator.jsx`
+
+**Updated props**:
+```javascript
+{
+  cashbackRate: number,
+  merchantName: string,
+  amount: string,              // controlled by parent
+  onAmountChange: (amount: string) => void,
+  onActivate: () => void
+}
+```
+
+**Calculation** (derived from amount prop):
+```javascript
+const orderAmount = parseFloat(amount) || 0;
+const cashbackAmount = orderAmount * (cashbackRate / 100);
+const hasAmount = orderAmount > 0;
+```
+
+**Dynamic CTA button text**:
+```jsx
+<button
+  onClick={onActivate}
+  disabled={isActivating}
+  className="bg-emerald-500 hover:bg-emerald-600 text-white rounded-full 
+             px-6 py-3 font-semibold w-full transition-colors
+             disabled:opacity-50 disabled:cursor-not-allowed"
+>
+  {hasAmount
+    ? `Shop on ${merchantName} & Earn ₹${cashbackAmount.toFixed(2)} →`
+    : 'Activate Cashback & Shop →'
+  }
+</button>
+```
+
+**Input validation**:
+```jsx
+<input
+  type="number"
+  min="0"
+  step="1"
+  placeholder="1000"
+  value={amount}
+  onChange={(e) => onAmountChange(e.target.value)}
+  className="w-full px-4 py-3 text-lg font-semibold border-2 border-slate-200 
+             rounded-xl focus:border-emerald-500 focus:outline-none transition-colors"
+/>
+```
+
+#### Category and Offer Click Updates
+
+**Category clicks** and **offer clicks** continue to use the default `orderAmount` of `1000` since they don't have a calculator input. Only the main calculator CTA button uses the user-entered amount.
+
+**Rationale**: Categories and offers are quick-action buttons for users who want to shop immediately without calculating. The calculator is for users who want to see their exact cashback before shopping.
+
+#### Data Flow
+
+```
+User enters ₹2500 in calculator
+  ↓
+calculatorAmount state = "2500"
+  ↓
+Cashback display updates: "You will earn: ₹250.00 cashback"
+  ↓
+CTA button updates: "Shop on Flipkart & Earn ₹250 →"
+  ↓
+User clicks CTA button
+  ↓
+handleCalculatorActivate() called
+  ↓
+createTransaction(merchantId, 2500, token)
+  ↓
+Backend calculates: cashbackAmount = 2500 × 0.10 = 250.00
+  ↓
+Transaction created with orderAmount=2500, cashbackAmount=250.00
+  ↓
+Wallet refreshes, new transaction appears in history
+```
+
+---
+
+### Profile Page (Req 56)
+
+#### Route Setup
+
+**File**: `main.jsx`
+
+**New route**:
+```jsx
+<Route path="/profile" element={<ProfilePage />} />
+```
+
+**Protected route logic**: Handled within `ProfilePage` component (redirect to login if not authenticated).
+
+#### New API Method
+
+**File**: `src/services/api.js`
+
+```javascript
+// PUT /api/v1/users/me
+export const updateUserProfile = async (name, token) => {
+  const response = await apiClient.put(
+    '/users/me',
+    { name },
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  return response.data; // Updated user object
+};
+```
+
+**Note**: The wallet endpoint `GET /api/v1/wallet/me` already returns user info (name, email) along with wallet data and transactions, so no additional user profile endpoint is needed for fetching.
+
+#### ProfilePage Component
+
+**File**: `src/pages/ProfilePage.jsx`
+
+**Layout**:
+```
+┌──────────────────────────────────────────────────────────────┐
+│  Profile                                                     │
+│                                                              │
+│  ┌────────────────────────────────────────────────────────┐  │
+│  │  PROFILE CARD                                          │  │
+│  │  ┌──────┐                                              │  │
+│  │  │  JD  │  John Doe                                    │  │
+│  │  └──────┘  john@example.com                            │  │
+│  │            [Edit Name]                                 │  │
+│  └────────────────────────────────────────────────────────┘  │
+│                                                              │
+│  ┌────────────────────────────────────────────────────────┐  │
+│  │  WALLET SUMMARY                                        │  │
+│  │  Total Earned: ₹12,500  •  Pending: ₹2,500            │  │
+│  │  Available: ₹10,000                                    │  │
+│  └────────────────────────────────────────────────────────┘  │
+│                                                              │
+│  ┌────────────────────────────────────────────────────────┐  │
+│  │  TRANSACTION HISTORY                                   │  │
+│  │  (reuse TransactionList component)                     │  │
+│  └────────────────────────────────────────────────────────┘  │
+└──────────────────────────────────────────────────────────────┘
+```
+
+**State**:
+```javascript
+const { user, token, isAuthenticated, updateUser } = useAuth();
+const navigate = useNavigate();
+const { showToast } = useToast();
+
+const [walletData, setWalletData] = useState(null);
+const [transactions, setTransactions] = useState([]);
+const [loading, setLoading] = useState(true);
+const [editMode, setEditMode] = useState(false);
+const [nameInput, setNameInput] = useState('');
+const [updating, setUpdating] = useState(false);
+```
+
+**Auth guard** (redirect if not authenticated):
+```javascript
+useEffect(() => {
+  if (!isAuthenticated) {
+    navigate('/');
+    showToast('Please sign in to view your profile', 'info');
+  }
+}, [isAuthenticated, navigate]);
+```
+
+**Data fetching** (on mount):
+```javascript
+useEffect(() => {
+  if (!isAuthenticated || !token) return;
+  
+  const fetchProfileData = async () => {
+    setLoading(true);
+    try {
+      const data = await getWallet(token);
+      setWalletData(data);
+      setTransactions(data.transactions || []);
+    } catch (err) {
+      showToast('Failed to load profile data', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  fetchProfileData();
+}, [isAuthenticated, token]);
+```
+
+#### Profile Card Section
+
+```jsx
+<section className="bg-white rounded-3xl border border-slate-200 shadow-sm p-8">
+  <h2 className="text-2xl font-bold text-slate-900 mb-6">Profile</h2>
+  
+  <div className="flex items-start gap-6">
+    {/* Avatar circle with initials */}
+    <div className="w-20 h-20 rounded-full bg-emerald-100 flex items-center 
+                    justify-center text-2xl font-bold text-emerald-700">
+      {user?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'}
+    </div>
+    
+    <div className="flex-1">
+      {!editMode ? (
+        <>
+          <h3 className="text-xl font-semibold text-slate-900">{user?.name}</h3>
+          <p className="text-slate-500 text-sm mt-1">{user?.email}</p>
+          <button
+            onClick={() => {
+              setEditMode(true);
+              setNameInput(user?.name || '');
+            }}
+            className="mt-3 text-emerald-600 hover:text-emerald-700 font-medium text-sm"
+          >
+            Edit Name
+          </button>
+        </>
+      ) : (
+        <>
+          <input
+            type="text"
+            value={nameInput}
+            onChange={(e) => setNameInput(e.target.value)}
+            className="w-full px-4 py-2 border-2 border-slate-200 rounded-xl 
+                       focus:border-emerald-500 focus:outline-none"
+            placeholder="Enter your name"
+          />
+          <p className="text-slate-500 text-sm mt-2">{user?.email}</p>
+          <div className="flex gap-2 mt-3">
+            <button
+              onClick={handleSaveName}
+              disabled={updating || !nameInput.trim()}
+              className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 
+                         rounded-full text-sm font-semibold transition-colors
+                         disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {updating ? 'Saving...' : 'Save'}
+            </button>
+            <button
+              onClick={() => setEditMode(false)}
+              disabled={updating}
+              className="border border-slate-200 text-slate-700 px-4 py-2 
+                         rounded-full text-sm font-medium hover:border-slate-300"
+            >
+              Cancel
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  </div>
+</section>
+```
+
+#### Name Update Handler
+
+```javascript
+const handleSaveName = async () => {
+  if (!nameInput.trim()) {
+    showToast('Name cannot be empty', 'error');
+    return;
+  }
+  
+  setUpdating(true);
+  try {
+    const updatedUser = await updateUserProfile(nameInput.trim(), token);
+    
+    // Update auth context with new user data
+    updateUser(updatedUser);
+    
+    setEditMode(false);
+    showToast('Name updated successfully', 'success');
+  } catch (err) {
+    showToast('Failed to update name', 'error');
+  } finally {
+    setUpdating(false);
+  }
+};
+```
+
+**Note**: The `updateUser` function needs to be added to `AuthContext` to update the user state after a successful profile update:
+
+```javascript
+// In AuthContext.jsx
+const updateUser = (updatedUserData) => {
+  setUser(prev => ({ ...prev, ...updatedUserData }));
+};
+
+// Add to context value
+return (
+  <AuthContext.Provider value={{ 
+    user, token, isAuthenticated, 
+    login, register, logout, updateUser 
+  }}>
+    {children}
+  </AuthContext.Provider>
+);
+```
+
+#### Wallet Summary Section
+
+```jsx
+<section className="bg-white rounded-3xl border border-slate-200 shadow-sm p-8">
+  <h2 className="text-2xl font-bold text-slate-900 mb-6">Wallet Summary</h2>
+  
+  {loading ? (
+    <div className="animate-pulse space-y-3">
+      <div className="h-6 bg-slate-200 rounded w-3/4"></div>
+      <div className="h-6 bg-slate-200 rounded w-1/2"></div>
+    </div>
+  ) : (
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="flex flex-col gap-1">
+        <span className="text-slate-500 text-sm">Total Earned</span>
+        <span className="text-2xl font-bold text-emerald-600">
+          ₹{walletData?.totalEarned?.toLocaleString('en-IN') || '0'}
+        </span>
+      </div>
+      <div className="flex flex-col gap-1">
+        <span className="text-slate-500 text-sm">Pending</span>
+        <span className="text-2xl font-bold text-amber-600">
+          ₹{walletData?.pending?.toLocaleString('en-IN') || '0'}
+        </span>
+      </div>
+      <div className="flex flex-col gap-1">
+        <span className="text-slate-500 text-sm">Available for Payout</span>
+        <span className="text-2xl font-bold text-slate-900">
+          ₹{walletData?.available?.toLocaleString('en-IN') || '0'}
+        </span>
+      </div>
+    </div>
+  )}
+</section>
+```
+
+#### Transaction History Section
+
+```jsx
+<section className="bg-white rounded-3xl border border-slate-200 shadow-sm p-8">
+  <h2 className="text-2xl font-bold text-slate-900 mb-6">Transaction History</h2>
+  
+  {loading ? (
+    <div className="animate-pulse space-y-3">
+      <div className="h-12 bg-slate-200 rounded"></div>
+      <div className="h-12 bg-slate-200 rounded"></div>
+      <div className="h-12 bg-slate-200 rounded"></div>
+    </div>
+  ) : transactions.length > 0 ? (
+    <TransactionList transactions={transactions} loading={false} />
+  ) : (
+    <div className="text-center py-12">
+      <Receipt className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+      <p className="text-slate-500">No transactions yet</p>
+      <button
+        onClick={() => navigate('/')}
+        className="mt-4 text-emerald-600 hover:text-emerald-700 font-medium"
+      >
+        Start shopping to earn cashback →
+      </button>
+    </div>
+  )}
+</section>
+```
+
+#### Navigation Integration
+
+**Mobile Bottom Nav** (update existing):
+```javascript
+// In MobileBottomNav.jsx
+const tabs = [
+  { name: 'Home', icon: Home, path: '/' },
+  { name: 'Stores', icon: Store, path: '/' },
+  { name: 'Wallet', icon: Wallet, path: '/' },
+  { name: 'Profile', icon: User, path: '/profile' }, // Now functional
+];
+
+// Update click handler
+const handleTabClick = (tab) => {
+  navigate(tab.path);
+};
+```
+
+**Desktop Header** (add profile link):
+```jsx
+// In Header.jsx, when authenticated
+<button
+  onClick={() => navigate('/profile')}
+  className="flex items-center gap-2 text-slate-700 hover:text-emerald-600 
+             transition-colors"
+>
+  <User className="w-5 h-5" />
+  <span className="text-sm font-medium">Profile</span>
+</button>
+```
+
+#### Component Structure
+
+```
+src/pages/
+  ProfilePage.jsx              # New profile page component
+
+src/context/
+  AuthContext.jsx              # Add updateUser function
+
+src/services/
+  api.js                       # Add updateUserProfile function
+```
+
+#### Updated Component Hierarchy
+
+```
+main.jsx
+└── BrowserRouter
+    └── Routes
+        ├── Route "/"
+        │   └── App (homepage)
+        ├── Route "/merchants/:id"
+        │   └── MerchantDetailPage
+        ├── Route "/admin"
+        │   └── AdminPage
+        └── Route "/profile"          ← NEW
+            └── ProfilePage
+                ├── Profile Card (with edit name)
+                ├── Wallet Summary
+                └── Transaction History (reused component)
+```
+
+---
+
+### New Correctness Properties
+
+**Property 35: Search Filter Accuracy**
+
+*For any* search query string and any merchant list, the filtered results SHALL contain only merchants whose name includes the search query (case-insensitive), and SHALL contain all such merchants.
+
+*Validates: Requirements 54.2, 54.3*
+
+---
+
+**Property 36: Search + Category Filter Composition**
+
+*For any* active category and any search query, the filtered results SHALL be the intersection of merchants matching the search query AND merchants in the active category.
+
+*Validates: Requirements 54.7*
+
+---
+
+**Property 37: Calculator Amount Transaction Creation**
+
+*For any* user-entered amount in the cashback calculator, when the calculator CTA button is clicked, the `createTransaction` call SHALL use the entered amount as `orderAmount`. If no amount is entered, it SHALL use a default value of 1000.
+
+*Validates: Requirements 55.2, 55.6*
+
+---
+
+**Property 38: Cashback Calculation Accuracy**
+
+*For any* order amount and any merchant cashback rate, the displayed cashback amount SHALL equal `(orderAmount × cashbackRate / 100)` rounded to 2 decimal places.
+
+*Validates: Requirements 55.3*
+
+---
+
+**Property 39: Profile Page Auth Guard**
+
+*For any* unauthenticated user attempting to access `/profile`, the application SHALL redirect to the homepage and SHALL NOT render the profile page content.
+
+*Validates: Requirements 56.9*
+
+---
+
+**Property 40: Profile Name Update Persistence**
+
+*For any* successful name update via `updateUserProfile`, the updated name SHALL be reflected in the `AuthContext` user state, the profile page display, and the navbar greeting without requiring a page refresh.
+
+*Validates: Requirements 56.6, 56.7*
+
+---
+
+**Property 41: Profile Data Source**
+
+*For any* authenticated user on the profile page, the wallet summary and transaction history SHALL be fetched from `GET /api/v1/wallet/me` using the user's JWT token.
+
+*Validates: Requirements 56.10*

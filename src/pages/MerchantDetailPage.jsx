@@ -101,6 +101,7 @@ export default function MerchantDetailPage() {
   const [notFound, setNotFound] = useState(false);
   const [wallet, setWallet] = useState(null);
   const [isActivating, setIsActivating] = useState(false);
+  const [calculatorAmount, setCalculatorAmount] = useState('');
 
   useEffect(() => {
     let cancelled = false;
@@ -165,16 +166,42 @@ export default function MerchantDetailPage() {
     }
   };
 
-  const handleCalculatorActivate = (amount) => {
+  const handleCalculatorActivate = async () => {
+    if (isActivating) return;
     if (!isAuthenticated) {
       setAuthModal('login');
       return;
     }
-    // Navigate to first category or show toast
-    if (merchant?.categories?.length > 0) {
-      handleCategoryClick(merchant.categories[0]);
-    } else {
-      showToast('Select a category below to start shopping', 'info');
+
+    // Use entered amount or default to 1000
+    const orderAmount = parseFloat(calculatorAmount) || 1000;
+    
+    // Validate amount is positive
+    if (orderAmount <= 0) {
+      showToast('Please enter a valid amount', 'error');
+      return;
+    }
+
+    setIsActivating(true);
+    try {
+      const tx = await createTransaction(merchant.id, orderAmount, token);
+      const cashback = tx?.cashbackAmount ?? (orderAmount * (merchant.cashbackRate / 100));
+      
+      // Open merchant website
+      if (merchant.websiteUrl || merchant.manualTrackingUrl) {
+        window.open(merchant.websiteUrl || merchant.manualTrackingUrl, '_blank');
+      }
+      
+      showToast(`Cashback activated! You'll earn ${formatCurrency(cashback)}`, 'success');
+      window.dispatchEvent(new Event('walletUpdated'));
+    } catch (err) {
+      showToast(err.message || 'Could not record transaction', 'error');
+      // Still open URL on error
+      if (merchant.websiteUrl || merchant.manualTrackingUrl) {
+        window.open(merchant.websiteUrl || merchant.manualTrackingUrl, '_blank');
+      }
+    } finally {
+      setIsActivating(false);
     }
   };
 
@@ -255,7 +282,10 @@ export default function MerchantDetailPage() {
             <CashbackCalculator
               cashbackRate={merchant.cashbackRate}
               merchantName={merchant.name}
+              amount={calculatorAmount}
+              onAmountChange={setCalculatorAmount}
               onActivate={handleCalculatorActivate}
+              disabled={isActivating}
             />
 
             {merchant.categories?.length > 0 && (
