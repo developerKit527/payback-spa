@@ -1057,3 +1057,175 @@ This implementation plan breaks down the Payback SPA Frontend into discrete, inc
   - Verify calculator uses entered amount for transactions
   - Verify profile page displays user data and allows name editing
   - Ask the user if questions arise before writing any code
+
+
+---
+
+## Tasks: Order Confirmation, Empty States, Referral System, Withdrawal Flow (Requirements 57–60)
+
+- [ ] 62. Implement Order Confirmation Modal (Requirement 57)
+  - [ ] 62.1 Create ConfirmationModal component
+    - Create `src/components/ConfirmationModal/ConfirmationModal.jsx` + `index.js`
+    - Modal overlay: `fixed inset-0 bg-black/50 z-50` with white card `bg-white rounded-3xl p-8 max-w-md`
+    - Display message: "You're about to shop at [Merchant Name]. Make sure to complete your purchase for cashback to be tracked."
+    - Primary button: "Got it, Take me to [Merchant Name] →" (emerald, rounded-full)
+    - Close button (X icon) in top-right corner
+    - Accept props: `isOpen`, `merchantName`, `onConfirm`, `onClose`
+    - _Requirements: 57.1, 57.2, 57.3, 57.5, 57.7_
+
+  - [ ] 62.2 Wire confirmation modal into MerchantDetailPage
+    - Add `showConfirmation` state and `pendingAction` state (stores category/offer data)
+    - Update `handleCategoryClick` to set `pendingAction` and `showConfirmation=true` instead of immediately creating transaction
+    - Update `handleOfferActivate` to set `pendingAction` and `showConfirmation=true` instead of immediately creating transaction
+    - On modal confirm: execute the pending action (create transaction + open URL)
+    - On modal close: clear `pendingAction` and set `showConfirmation=false`
+    - _Requirements: 57.1, 57.4, 57.6, 57.8_
+
+  - [ ]* 62.3 Write unit tests for confirmation modal
+    - Test modal displays correct merchant name
+    - Test confirm button triggers onConfirm callback
+    - Test close button triggers onClose callback
+    - Test modal doesn't render when isOpen is false
+
+  - [ ]* 62.4 Write property-based tests for confirmation flow
+    - **Property 42: Confirmation Modal Transaction Guard**
+    - **Validates: Requirements 57.4, 57.6**
+    - Test that transaction is only created after confirmation, not on initial click
+
+- [ ] 63. Implement Empty States Polish (Requirement 58)
+  - [ ] 63.1 Create EmptyState component
+    - Create `src/components/EmptyState/EmptyState.jsx` + `index.js`
+    - Accept props: `icon` (lucide icon component), `title`, `message`, `actionText`, `onAction`
+    - Layout: centered flex column with icon, title (text-2xl font-bold), message (text-slate-500), and action button
+    - Use emerald/slate design system
+    - _Requirements: 58.7, 58.8_
+
+  - [ ] 63.2 Add empty state to TransactionList
+    - WHEN transactions array is empty, render EmptyState with ShoppingBag icon
+    - Title: "No transactions yet"
+    - Message: "Start shopping to earn cashback!"
+    - Action button: "Browse Merchants" (scrolls to merchant grid or navigates to home)
+    - _Requirements: 58.1, 58.2, 58.3_
+
+  - [ ] 63.3 Update unauthenticated wallet empty state in App.jsx
+    - Verify existing "Your wallet is waiting" prompt card includes Wallet icon
+    - Ensure it includes helpful text explaining sign-in requirement
+    - Ensure it includes "Sign In" and "Join Now" buttons
+    - _Requirements: 58.4, 58.5_
+
+  - [ ]* 63.4 Write unit tests for empty states
+    - Test EmptyState component renders all props correctly
+    - Test TransactionList shows empty state when transactions array is empty
+    - Test empty state action button triggers correct callback
+
+- [ ] 64. Implement Referral System Frontend (Requirement 59)
+  - [ ] 64.1 Add referral API methods to api.js
+    - Export `getReferralStats(token)` → `GET /api/v1/users/referral-stats` with Authorization header
+    - User profile endpoint already returns referralCode, no new endpoint needed
+    - _Requirements: 59.2, 59.8_
+
+  - [ ] 64.2 Create ReferralCard component
+    - Create `src/components/ReferralCard/ReferralCard.jsx` + `index.js`
+    - Display section title: "Refer & Earn"
+    - Display referral code in a copyable input field (read-only with copy button)
+    - "Copy Referral Link" button that copies `https://payback.app/ref/[code]` to clipboard
+    - Show toast "Referral link copied!" on successful copy
+    - Social sharing buttons: WhatsApp, Twitter, Facebook (using lucide icons)
+    - Display referral stats: "Friends Joined: X" and "Bonus Earned: ₹X"
+    - Accept props: `referralCode`, `stats` (friendsJoined, bonusEarned)
+    - Use emerald/slate design system with bg-white rounded-3xl border border-slate-200
+    - _Requirements: 59.1, 59.3, 59.4, 59.5, 59.6, 59.7, 59.10, 59.11_
+
+  - [ ] 64.3 Wire ReferralCard into ProfilePage
+    - Fetch referral stats using `getReferralStats(token)` on mount
+    - Extract `referralCode` from user profile data (already fetched)
+    - Pass referralCode and stats to ReferralCard component
+    - Display ReferralCard in a dedicated section on profile page
+    - _Requirements: 59.1, 59.2, 59.8, 59.11_
+
+  - [ ]* 64.4 Write unit tests for referral system
+    - Test ReferralCard displays referral code correctly
+    - Test copy button copies correct URL format
+    - Test copy button shows success toast
+    - Test referral stats display correctly
+
+  - [ ]* 64.5 Write property-based tests for referral
+    - **Property 43: Referral Link Format**
+    - **Validates: Requirements 59.4**
+    - Test that referral link always follows format `https://payback.app/ref/[code]`
+
+- [ ] 65. Implement Withdrawal Flow Frontend (Requirement 60)
+  - [ ] 65.1 Add withdrawal API methods to api.js
+    - Export `createWithdrawal(upiId, amount, token)` → `POST /api/v1/withdrawals` with body `{ upiId, amount }` and Authorization header
+    - Export `getWithdrawalHistory(token)` → `GET /api/v1/withdrawals` with Authorization header
+    - _Requirements: 60.6, 60.9_
+
+  - [ ] 65.2 Create WithdrawalModal component
+    - Create `src/components/WithdrawalModal/WithdrawalModal.jsx` + `index.js`
+    - Modal overlay: `fixed inset-0 bg-black/50 z-50` with white card
+    - Display available balance prominently at top
+    - UPI ID input field with placeholder "yourname@upi"
+    - Validate UPI ID pattern: alphanumeric@alphanumeric (regex: `^[a-zA-Z0-9]+@[a-zA-Z0-9]+$`)
+    - Submit button: "Request Withdrawal" (emerald, disabled when invalid or submitting)
+    - Show inline validation error for invalid UPI ID
+    - Accept props: `isOpen`, `availableBalance`, `onSubmit`, `onClose`
+    - Use emerald/slate design system
+    - _Requirements: 60.2, 60.3, 60.4, 60.5, 60.11_
+
+  - [ ] 65.3 Wire WithdrawalModal into WalletCard
+    - Update WalletCard to accept `onWithdraw` callback prop
+    - Enable "Withdraw" button when available balance > 0
+    - Disable "Withdraw" button when available balance is 0
+    - Pass `onWithdraw` callback from App.jsx to WalletCard
+    - _Requirements: 60.1, 60.12_
+
+  - [ ] 65.4 Add withdrawal handler in App.jsx
+    - Add `showWithdrawalModal` state
+    - Implement `handleWithdraw` function that opens modal
+    - Implement `handleWithdrawalSubmit` that calls `createWithdrawal` API
+    - On success: show toast "Withdrawal request submitted! You'll receive payment within 24-48 hours"
+    - On success: refresh wallet data to update available balance
+    - On failure: show error toast with API error message
+    - Pass handlers to WalletCard and WithdrawalModal
+    - _Requirements: 60.6, 60.7, 60.8, 60.12_
+
+  - [ ] 65.5 Create WithdrawalHistory component
+    - Create `src/components/WithdrawalHistory/WithdrawalHistory.jsx` + `index.js`
+    - Display section title: "Withdrawal History"
+    - Table/list layout: amount, UPI ID, status badge, date
+    - Status badges: PENDING (amber), COMPLETED (emerald), FAILED (red)
+    - Format dates using Indian locale
+    - Accept props: `withdrawals` array
+    - Use emerald/slate design system matching TransactionList
+    - _Requirements: 60.9, 60.10, 60.11_
+
+  - [ ] 65.6 Wire WithdrawalHistory into ProfilePage
+    - Fetch withdrawal history using `getWithdrawalHistory(token)` on mount
+    - Display WithdrawalHistory component in profile page
+    - Show empty state when no withdrawals exist
+    - _Requirements: 60.9, 60.10_
+
+  - [ ]* 65.7 Write unit tests for withdrawal flow
+    - Test WithdrawalModal validates UPI ID format
+    - Test WithdrawalModal disables submit when invalid
+    - Test withdrawal success shows correct toast
+    - Test withdrawal failure shows error toast
+    - Test WithdrawalHistory displays withdrawals correctly
+
+  - [ ]* 65.8 Write property-based tests for withdrawal
+    - **Property 44: UPI ID Validation**
+    - **Validates: Requirements 60.5**
+    - Test that UPI ID validation correctly accepts/rejects various formats
+    
+    - **Property 45: Withdrawal Button State**
+    - **Validates: Requirements 60.1, 60.12**
+    - Test that withdraw button is enabled only when available balance > 0
+
+- [ ] 66. Final checkpoint — Requirements 57–60
+  - Run `npm test -- --run` and confirm all tests pass
+  - Verify confirmation modal appears before merchant redirect
+  - Verify empty states display correctly for no transactions and unauthenticated wallet
+  - Verify referral card displays code and allows copying link
+  - Verify withdrawal modal validates UPI ID and submits requests
+  - Verify withdrawal history displays on profile page
+  - Ask the user if questions arise before writing any code

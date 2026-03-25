@@ -159,4 +159,44 @@ export const updateUserProfile = async (name, token) => {
   return response.data;
 };
 
+/**
+ * Fetch referral stats for the authenticated user
+ * @param {string} token - JWT token
+ * @returns {Promise} { friendsJoined, bonusEarned }
+ */
+export const getReferralStats = async (token) => {
+  const response = await apiClient.get('/referrals/stats', {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return response.data;
+};
+
+/**
+ * Create a withdrawal request
+ * @param {string} upiId - UPI ID for payment
+ * @param {number} amount - Amount to withdraw
+ * @param {string} token - JWT token
+ * @returns {Promise} WithdrawalDTO
+ */
+export const createWithdrawal = async (upiId, amount, token) => {
+  const response = await apiClient.post(
+    '/withdrawals',
+    { upiId, amount },
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  return response.data;
+};
+
+/**
+ * Fetch withdrawal history for the authenticated user
+ * @param {string} token - JWT token
+ * @returns {Promise} Array of WithdrawalDTO
+ */
+export const getWithdrawalHistory = async (token) => {
+  const response = await apiClient.get('/withdrawals', {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return response.data;
+};
+
 export default apiClient;

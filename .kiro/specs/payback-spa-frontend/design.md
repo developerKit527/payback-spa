@@ -3335,3 +3335,1492 @@ main.jsx
 *For any* authenticated user on the profile page, the wallet summary and transaction history SHALL be fetched from `GET /api/v1/wallet/me` using the user's JWT token.
 
 *Validates: Requirements 56.10*
+
+
+---
+
+## Design Additions: Order Confirmation, Empty States, Referral System, Withdrawal Flow (Requirements 57–60)
+
+### Order Confirmation Flow (Req 57)
+
+#### Overview
+
+Before redirecting users to merchant websites, the application displays a confirmation modal that educates users about cashback tracking requirements. This improves user understanding and reduces support queries about "missing cashback."
+
+#### ConfirmationModal Component
+
+**File**: `src/components/ConfirmationModal/ConfirmationModal.jsx`
+
+**Props**:
+```javascript
+{
+  isOpen: boolean,
+  merchantName: string,
+  onConfirm: () => void,
+  onClose: () => void
+}
+```
+
+**Layout**:
+```
+┌──────────────────────────────────────────────────────────────┐
+│  Modal Overlay (fixed inset-0 bg-black/50 z-50)             │
+│                                                              │
+│  ┌────────────────────────────────────────────────────────┐  │
+│  │  bg-white rounded-3xl p-8 max-w-md                     │  │
+│  │                                                    [×]  │  │
+│  │  ⚠️ Ready to Shop?                                     │  │
+│  │                                                        │  │
+│  │  You're about to shop at [Merchant Name].             │  │
+│  │  Make sure to complete your purchase for               │  │
+│  │  cashback to be tracked.                               │  │
+│  │                                                        │  │
+│  │  [Got it, Take me to [Merchant Name] →]               │  │
+│  │   (full-width emerald button)                          │  │
+│  └────────────────────────────────────────────────────────┘  │
+└──────────────────────────────────────────────────────────────┘
+```
+
+
+**Component structure**:
+```jsx
+const ConfirmationModal = ({ isOpen, merchantName, onConfirm, onClose }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl">
+        {/* Close button */}
+        <button
+          onClick={onClose}
+          className="float-right text-slate-400 hover:text-slate-600"
+          aria-label="Close"
+        >
+          <X className="w-6 h-6" />
+        </button>
+
+        {/* Icon */}
+        <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center 
+                        justify-center mb-4">
+          <AlertCircle className="w-6 h-6 text-amber-600" />
+        </div>
+
+        {/* Heading */}
+        <h2 className="text-2xl font-bold text-slate-900 mb-3">
+          Ready to Shop?
+        </h2>
+
+        {/* Message */}
+        <p className="text-slate-600 leading-relaxed mb-6">
+          You're about to shop at <strong>{merchantName}</strong>. 
+          Make sure to complete your purchase for cashback to be tracked.
+        </p>
+
+        {/* Confirm button */}
+        <button
+          onClick={onConfirm}
+          className="w-full bg-emerald-500 hover:bg-emerald-600 text-white 
+                     font-semibold py-3 rounded-full transition-colors"
+        >
+          Got it, Take me to {merchantName} →
+        </button>
+      </div>
+    </div>
+  );
+};
+```
+
+
+#### Integration with MerchantDetailPage
+
+**File**: `src/pages/MerchantDetailPage.jsx`
+
+**New state**:
+```javascript
+const [showConfirmModal, setShowConfirmModal] = useState(false);
+const [pendingAction, setPendingAction] = useState(null);
+```
+
+**Updated category click handler**:
+```javascript
+const handleCategoryClick = async (category) => {
+  if (isActivating) return;
+  if (!isAuthenticated) {
+    setAuthModal('login');
+    return;
+  }
+
+  // Store the action and show confirmation modal
+  setPendingAction({ type: 'category', data: category });
+  setShowConfirmModal(true);
+};
+```
+
+**Updated offer click handler**:
+```javascript
+const handleOfferActivate = async (offer) => {
+  if (isActivating) return;
+  if (!isAuthenticated) {
+    setAuthModal('login');
+    return;
+  }
+
+  // Store the action and show confirmation modal
+  setPendingAction({ type: 'offer', data: offer });
+  setShowConfirmModal(true);
+};
+```
+
+
+**Confirmation handler** (executes the pending action):
+```javascript
+const handleConfirmAction = async () => {
+  setShowConfirmModal(false);
+  
+  if (!pendingAction) return;
+
+  setIsActivating(true);
+  try {
+    const { type, data } = pendingAction;
+    
+    // Create transaction
+    const tx = await createTransaction(merchant.id, 1000, token);
+    const cashbackAmount = tx?.cashbackAmount ?? 
+                          (1000 * merchant.cashbackRate / 100).toFixed(2);
+    
+    // Get the URL based on action type
+    const url = type === 'category' ? data.affiliateUrl : data.affiliateUrl;
+    
+    // Open merchant website
+    window.open(url, '_blank');
+    
+    // Show success toast
+    const message = type === 'category'
+      ? `Cashback activated! Shop and earn ₹${cashbackAmount}`
+      : 'Deal activated! Cashback tracking started';
+    showToast(message, 'success');
+    
+    // Refresh wallet
+    window.dispatchEvent(new Event('walletUpdated'));
+  } catch (err) {
+    showToast('Could not record transaction', 'error');
+    // Still open URL on error
+    const url = pendingAction.type === 'category' 
+      ? pendingAction.data.affiliateUrl 
+      : pendingAction.data.affiliateUrl;
+    window.open(url, '_blank');
+  } finally {
+    setIsActivating(false);
+    setPendingAction(null);
+  }
+};
+```
+
+**Modal close handler**:
+```javascript
+const handleCloseConfirmModal = () => {
+  setShowConfirmModal(false);
+  setPendingAction(null);
+};
+```
+
+
+**Render modal**:
+```jsx
+<ConfirmationModal
+  isOpen={showConfirmModal}
+  merchantName={merchant?.name || ''}
+  onConfirm={handleConfirmAction}
+  onClose={handleCloseConfirmModal}
+/>
+```
+
+#### Data Flow
+
+```
+User clicks category/offer
+  ↓
+Auth check (redirect to login if not authenticated)
+  ↓
+Store pending action in state
+  ↓
+Show confirmation modal
+  ↓
+User clicks "Got it, Take me to [Merchant]"
+  ↓
+Execute pending action:
+  - Create transaction
+  - Open merchant URL
+  - Show success toast
+  - Refresh wallet
+  ↓
+Clear pending action
+```
+
+**Cancel flow**:
+```
+User clicks X or clicks outside modal
+  ↓
+Close modal
+  ↓
+Clear pending action
+  ↓
+No transaction created, no URL opened
+```
+
+
+---
+
+### Empty States Polish (Req 58)
+
+#### Empty Transaction State
+
+**File**: `src/components/TransactionList/TransactionList.jsx`
+
+**Updated empty state** (when `transactions.length === 0`):
+```jsx
+{transactions.length === 0 && !loading && (
+  <div className="flex flex-col items-center justify-center py-16 gap-4">
+    {/* Icon */}
+    <div className="w-16 h-16 rounded-full bg-emerald-50 flex items-center 
+                    justify-center">
+      <ShoppingBag className="w-8 h-8 text-emerald-500" />
+    </div>
+    
+    {/* Message */}
+    <h3 className="text-xl font-semibold text-slate-700">
+      Start shopping to earn cashback!
+    </h3>
+    <p className="text-slate-500 text-sm text-center max-w-md">
+      Browse our merchant partners and activate cashback before shopping 
+      to start earning rewards.
+    </p>
+    
+    {/* CTA Button */}
+    <button
+      onClick={() => {
+        const merchantGrid = document.getElementById('merchant-grid');
+        if (merchantGrid) {
+          merchantGrid.scrollIntoView({ behavior: 'smooth' });
+        }
+      }}
+      className="mt-2 bg-emerald-500 hover:bg-emerald-600 text-white 
+                 font-semibold px-6 py-3 rounded-full transition-colors"
+    >
+      Browse Merchants
+    </button>
+  </div>
+)}
+```
+
+**Note**: The merchant grid section should have `id="merchant-grid"` for scroll targeting.
+
+
+#### Unauthenticated Wallet Empty State
+
+**File**: `src/App.jsx`
+
+**Already implemented in Req 37** — the unauthenticated wallet section displays:
+```jsx
+<section className="bg-gradient-to-r from-emerald-50 via-white to-emerald-50 py-12">
+  <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-8
+                  flex flex-col items-center text-center gap-4 max-w-md mx-auto">
+    {/* Wallet icon */}
+    <div className="w-14 h-14 rounded-full bg-emerald-100 flex items-center 
+                    justify-center">
+      <Wallet className="w-7 h-7 text-emerald-600" />
+    </div>
+    
+    {/* Heading */}
+    <h2 className="text-xl font-bold text-slate-900">
+      Your wallet is waiting
+    </h2>
+    
+    {/* Description */}
+    <p className="text-slate-500 text-sm">
+      Sign in or create an account to track your cashback earnings.
+    </p>
+    
+    {/* CTA Buttons */}
+    <div className="flex gap-3 mt-2">
+      <button onClick={() => setAuthModal('login')} 
+              className="border border-slate-200 text-slate-700 px-4 py-2 
+                         rounded-full text-sm font-medium hover:border-emerald-500">
+        Sign In
+      </button>
+      <button onClick={() => setAuthModal('register')}
+              className="bg-emerald-500 text-white px-4 py-2 rounded-full 
+                         text-sm font-semibold hover:bg-emerald-600">
+        Join Now
+      </button>
+    </div>
+  </div>
+</section>
+```
+
+
+#### No Offers Empty State
+
+**File**: `src/pages/MerchantDetailPage.jsx`
+
+**Conditional rendering** (already implemented in Req 47):
+```jsx
+{merchant.offers && merchant.offers.length > 0 && (
+  <section>
+    <h2 className="text-2xl font-bold text-slate-900 mb-6">
+      Today's Best Deals
+    </h2>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {merchant.offers.map(offer => (
+        <OfferCard
+          key={offer.id}
+          offer={offer}
+          onActivate={handleOfferActivate}
+        />
+      ))}
+    </div>
+  </section>
+)}
+```
+
+**Design note**: When `merchant.offers` is empty or null, the entire "Today's Best Deals" section is not rendered. No empty state message is shown — the section simply doesn't appear.
+
+#### Profile Page Empty Transaction State
+
+**File**: `src/pages/ProfilePage.jsx`
+
+**Already implemented in Req 56** — when `transactions.length === 0`:
+```jsx
+<div className="text-center py-12">
+  <Receipt className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+  <p className="text-slate-500">No transactions yet</p>
+  <button
+    onClick={() => navigate('/')}
+    className="mt-4 text-emerald-600 hover:text-emerald-700 font-medium"
+  >
+    Start shopping to earn cashback →
+  </button>
+</div>
+```
+
+
+---
+
+### Referral System Frontend Components (Req 59)
+
+#### Overview
+
+The referral system allows users to share Payback with friends and earn bonuses. The frontend displays the user's unique referral code, provides sharing options, and shows referral statistics.
+
+#### New API Methods
+
+**File**: `src/services/api.js`
+
+```javascript
+// GET /api/v1/users/me/referral
+export const getReferralData = async (token) => {
+  const response = await apiClient.get('/users/me/referral', {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return response.data; // { referralCode, friendsJoined, bonusEarned }
+};
+```
+
+**Note**: The referral code is also included in the wallet response from `GET /api/v1/wallet/me`, so it can be accessed from existing wallet data without an additional API call.
+
+
+#### ReferralCard Component
+
+**File**: `src/components/ReferralCard/ReferralCard.jsx`
+
+**Props**:
+```javascript
+{
+  referralCode: string,
+  friendsJoined: number,
+  bonusEarned: number
+}
+```
+
+**Layout**:
+```
+┌──────────────────────────────────────────────────────────────┐
+│  bg-white rounded-3xl border border-slate-200 shadow-sm p-8  │
+│                                                              │
+│  🎁 Refer & Earn                                             │
+│                                                              │
+│  Share Payback with friends and earn ₹100 for each signup!  │
+│                                                              │
+│  Your Referral Code                                          │
+│  ┌────────────────────────────────────────────────────────┐  │
+│  │  PAYBACK2026XYZ                          [Copy Link]   │  │
+│  └────────────────────────────────────────────────────────┘  │
+│                                                              │
+│  Share via:  [WhatsApp] [Twitter] [Facebook]                │
+│                                                              │
+│  ┌─────────────────────┐  ┌─────────────────────┐          │
+│  │  Friends Joined     │  │  Bonus Earned       │          │
+│  │  12                 │  │  ₹1,200             │          │
+│  └─────────────────────┘  └─────────────────────┘          │
+└──────────────────────────────────────────────────────────────┘
+```
+
+
+**Component structure**:
+```jsx
+const ReferralCard = ({ referralCode, friendsJoined, bonusEarned }) => {
+  const { showToast } = useToast();
+  const referralLink = `https://payback.app/ref/${referralCode}`;
+
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(referralLink);
+      showToast('Referral link copied!', 'success');
+    } catch (err) {
+      showToast('Failed to copy link', 'error');
+    }
+  };
+
+  const handleShare = (platform) => {
+    const message = encodeURIComponent(
+      `Join Payback and earn cashback on every purchase! Use my referral code: ${referralCode}`
+    );
+    
+    const urls = {
+      whatsapp: `https://wa.me/?text=${message}%20${encodeURIComponent(referralLink)}`,
+      twitter: `https://twitter.com/intent/tweet?text=${message}&url=${encodeURIComponent(referralLink)}`,
+      facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(referralLink)}`
+    };
+    
+    window.open(urls[platform], '_blank', 'width=600,height=400');
+  };
+
+  return (
+    <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-8">
+      {/* Header */}
+      <div className="flex items-center gap-3 mb-4">
+        <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center 
+                        justify-center">
+          <Gift className="w-5 h-5 text-emerald-600" />
+        </div>
+        <h2 className="text-2xl font-bold text-slate-900">Refer & Earn</h2>
+      </div>
+
+      {/* Description */}
+      <p className="text-slate-600 mb-6">
+        Share Payback with friends and earn ₹100 for each signup!
+      </p>
+
+      {/* Referral Code Section */}
+      <div className="mb-6">
+        <label className="text-sm font-medium text-slate-700 mb-2 block">
+          Your Referral Code
+        </label>
+        <div className="flex gap-2">
+          <div className="flex-1 bg-slate-50 border border-slate-200 rounded-xl 
+                          px-4 py-3 font-mono text-lg font-semibold text-slate-900">
+            {referralCode}
+          </div>
+          <button
+            onClick={handleCopyLink}
+            className="bg-emerald-500 hover:bg-emerald-600 text-white 
+                       px-6 py-3 rounded-xl font-semibold transition-colors 
+                       flex items-center gap-2"
+          >
+            <Copy className="w-4 h-4" />
+            Copy Link
+          </button>
+        </div>
+      </div>
+
+      {/* Social Share Buttons */}
+      <div className="mb-6">
+        <p className="text-sm font-medium text-slate-700 mb-3">Share via:</p>
+        <div className="flex gap-3">
+          <button
+            onClick={() => handleShare('whatsapp')}
+            className="flex-1 bg-green-500 hover:bg-green-600 text-white 
+                       py-2 rounded-full font-medium transition-colors 
+                       flex items-center justify-center gap-2"
+          >
+            <MessageCircle className="w-4 h-4" />
+            WhatsApp
+          </button>
+          <button
+            onClick={() => handleShare('twitter')}
+            className="flex-1 bg-blue-500 hover:bg-blue-600 text-white 
+                       py-2 rounded-full font-medium transition-colors 
+                       flex items-center justify-center gap-2"
+          >
+            <Twitter className="w-4 h-4" />
+            Twitter
+          </button>
+          <button
+            onClick={() => handleShare('facebook')}
+            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white 
+                       py-2 rounded-full font-medium transition-colors 
+                       flex items-center justify-center gap-2"
+          >
+            <Facebook className="w-4 h-4" />
+            Facebook
+          </button>
+        </div>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-2 gap-4">
+        <div className="bg-emerald-50 rounded-2xl p-4">
+          <p className="text-sm text-emerald-700 font-medium mb-1">
+            Friends Joined
+          </p>
+          <p className="text-3xl font-bold text-emerald-600">
+            {friendsJoined}
+          </p>
+        </div>
+        <div className="bg-amber-50 rounded-2xl p-4">
+          <p className="text-sm text-amber-700 font-medium mb-1">
+            Bonus Earned
+          </p>
+          <p className="text-3xl font-bold text-amber-600">
+            ₹{bonusEarned.toLocaleString('en-IN')}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+};
+```
+
+
+#### Integration with ProfilePage
+
+**File**: `src/pages/ProfilePage.jsx`
+
+**Updated state**:
+```javascript
+const [referralData, setReferralData] = useState({
+  referralCode: '',
+  friendsJoined: 0,
+  bonusEarned: 0
+});
+```
+
+**Data fetching** (add to existing useEffect):
+```javascript
+useEffect(() => {
+  if (!isAuthenticated || !token) return;
+  
+  const fetchProfileData = async () => {
+    setLoading(true);
+    try {
+      const [walletData, referralData] = await Promise.all([
+        getWallet(token),
+        getReferralData(token)
+      ]);
+      
+      setWalletData(walletData);
+      setTransactions(walletData.transactions || []);
+      setReferralData(referralData);
+    } catch (err) {
+      showToast('Failed to load profile data', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  fetchProfileData();
+}, [isAuthenticated, token]);
+```
+
+**Render ReferralCard** (add after Wallet Summary section):
+```jsx
+{/* Referral Section */}
+<ReferralCard
+  referralCode={referralData.referralCode}
+  friendsJoined={referralData.friendsJoined}
+  bonusEarned={referralData.bonusEarned}
+/>
+```
+
+
+#### Referral Bonus Notification
+
+**Trigger**: When the backend sends a referral bonus event (via WebSocket or polling), display a toast notification.
+
+**Implementation approach** (polling-based for MVP):
+```javascript
+// In App.jsx or ProfilePage.jsx
+useEffect(() => {
+  if (!isAuthenticated || !token) return;
+  
+  let previousBonusEarned = referralData.bonusEarned;
+  
+  const checkReferralBonus = async () => {
+    try {
+      const data = await getReferralData(token);
+      if (data.bonusEarned > previousBonusEarned) {
+        const bonusAmount = data.bonusEarned - previousBonusEarned;
+        showToast(`You earned ₹${bonusAmount} referral bonus!`, 'success');
+        previousBonusEarned = data.bonusEarned;
+      }
+      setReferralData(data);
+    } catch (err) {
+      // Silent failure for background polling
+    }
+  };
+  
+  // Poll every 30 seconds
+  const interval = setInterval(checkReferralBonus, 30000);
+  
+  return () => clearInterval(interval);
+}, [isAuthenticated, token, referralData.bonusEarned]);
+```
+
+**Note**: For production, consider using WebSockets or Server-Sent Events for real-time notifications instead of polling.
+
+
+---
+
+### Withdrawal Flow Frontend Components (Req 60)
+
+#### Overview
+
+The withdrawal flow allows users to request payouts of their available balance to their UPI ID. The frontend provides a modal for withdrawal requests and displays withdrawal history on the profile page.
+
+#### New API Methods
+
+**File**: `src/services/api.js`
+
+```javascript
+// POST /api/v1/withdrawals
+export const createWithdrawal = async (upiId, amount, token) => {
+  const response = await apiClient.post(
+    '/withdrawals',
+    { upiId, amount },
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  return response.data; // WithdrawalDTO
+};
+
+// GET /api/v1/withdrawals/me
+export const getWithdrawalHistory = async (token) => {
+  const response = await apiClient.get('/withdrawals/me', {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return response.data; // Array<WithdrawalDTO>
+};
+```
+
+
+#### WithdrawalModal Component
+
+**File**: `src/components/WithdrawalModal/WithdrawalModal.jsx`
+
+**Props**:
+```javascript
+{
+  isOpen: boolean,
+  availableBalance: number,
+  onClose: () => void,
+  onSuccess: () => void
+}
+```
+
+**Layout**:
+```
+┌──────────────────────────────────────────────────────────────┐
+│  Modal Overlay (fixed inset-0 bg-black/50 z-50)             │
+│                                                              │
+│  ┌────────────────────────────────────────────────────────┐  │
+│  │  bg-white rounded-3xl p-8 max-w-md                     │  │
+│  │                                                    [×]  │  │
+│  │  💰 Withdraw Cashback                                  │  │
+│  │                                                        │  │
+│  │  Available Balance: ₹10,000                            │  │
+│  │                                                        │  │
+│  │  UPI ID                                                │  │
+│  │  [yourname@upi_________________]                       │  │
+│  │                                                        │  │
+│  │  [inline error if validation fails]                    │  │
+│  │                                                        │  │
+│  │  [Request Withdrawal]                                  │  │
+│  │   (full-width emerald button)                          │  │
+│  │                                                        │  │
+│  │  ℹ️ You'll receive payment within 24-48 hours          │  │
+│  └────────────────────────────────────────────────────────┘  │
+└──────────────────────────────────────────────────────────────┘
+```
+
+
+**Component structure**:
+```jsx
+const WithdrawalModal = ({ isOpen, availableBalance, onClose, onSuccess }) => {
+  const { token } = useAuth();
+  const { showToast } = useToast();
+  
+  const [upiId, setUpiId] = useState('');
+  const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  if (!isOpen) return null;
+
+  const validateUpiId = (value) => {
+    // Pattern: alphanumeric@alphanumeric
+    const upiPattern = /^[a-zA-Z0-9]+@[a-zA-Z0-9]+$/;
+    return upiPattern.test(value);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+
+    // Validation
+    if (!upiId.trim()) {
+      setError('Please enter your UPI ID');
+      return;
+    }
+
+    if (!validateUpiId(upiId)) {
+      setError('Invalid UPI ID format. Use: yourname@upi');
+      return;
+    }
+
+    if (availableBalance <= 0) {
+      setError('Insufficient balance for withdrawal');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await createWithdrawal(upiId, availableBalance, token);
+      showToast(
+        'Withdrawal request submitted! You\'ll receive payment within 24-48 hours',
+        'success'
+      );
+      setUpiId('');
+      onSuccess();
+      onClose();
+    } catch (err) {
+      const errorMessage = err?.response?.data?.message || 
+                          'Failed to submit withdrawal request';
+      setError(errorMessage);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl">
+        {/* Close button */}
+        <button
+          onClick={onClose}
+          className="float-right text-slate-400 hover:text-slate-600"
+          aria-label="Close"
+        >
+          <X className="w-6 h-6" />
+        </button>
+
+        {/* Header */}
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center 
+                          justify-center">
+            <Wallet className="w-5 h-5 text-emerald-600" />
+          </div>
+          <h2 className="text-2xl font-bold text-slate-900">
+            Withdraw Cashback
+          </h2>
+        </div>
+
+        {/* Available Balance */}
+        <div className="bg-emerald-50 rounded-2xl p-4 mb-6">
+          <p className="text-sm text-emerald-700 font-medium mb-1">
+            Available Balance
+          </p>
+          <p className="text-3xl font-bold text-emerald-600">
+            ₹{availableBalance.toLocaleString('en-IN')}
+          </p>
+        </div>
+
+        {/* Form */}
+        <form onSubmit={handleSubmit}>
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-slate-700 mb-2">
+              UPI ID
+            </label>
+            <input
+              type="text"
+              value={upiId}
+              onChange={(e) => setUpiId(e.target.value)}
+              placeholder="yourname@upi"
+              className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl 
+                         focus:border-emerald-500 focus:outline-none transition-colors"
+            />
+          </div>
+
+          {/* Error message */}
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl">
+              <p className="text-sm text-red-700">{error}</p>
+            </div>
+          )}
+
+          {/* Submit button */}
+          <button
+            type="submit"
+            disabled={submitting || availableBalance <= 0}
+            className="w-full bg-emerald-500 hover:bg-emerald-600 text-white 
+                       font-semibold py-3 rounded-full transition-colors mb-4
+                       disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {submitting ? 'Processing...' : 'Request Withdrawal'}
+          </button>
+
+          {/* Info message */}
+          <div className="flex items-start gap-2 text-sm text-slate-500">
+            <Info className="w-4 h-4 mt-0.5 shrink-0" />
+            <p>You'll receive payment within 24-48 hours</p>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+```
+
+
+#### Integration with WalletCard
+
+**File**: `src/components/WalletCard/WalletCard.jsx`
+
+**Add Withdraw button** (shown when `available > 0`):
+```jsx
+{available > 0 && (
+  <button
+    onClick={onWithdrawClick}
+    className="mt-4 w-full bg-emerald-500 hover:bg-emerald-600 text-white 
+               font-semibold py-3 rounded-full transition-colors 
+               flex items-center justify-center gap-2"
+  >
+    <ArrowUpCircle className="w-5 h-5" />
+    Withdraw
+  </button>
+)}
+```
+
+**Updated props**:
+```javascript
+{
+  wallet: { totalEarned, pending, available },
+  loading: boolean,
+  onWithdrawClick: () => void  // New prop
+}
+```
+
+#### Integration with App.jsx
+
+**File**: `src/App.jsx`
+
+**New state**:
+```javascript
+const [showWithdrawalModal, setShowWithdrawalModal] = useState(false);
+```
+
+**Pass handler to WalletCard**:
+```jsx
+<WalletCard
+  wallet={walletData}
+  loading={loading}
+  onWithdrawClick={() => setShowWithdrawalModal(true)}
+/>
+```
+
+**Render modal**:
+```jsx
+<WithdrawalModal
+  isOpen={showWithdrawalModal}
+  availableBalance={walletData?.available || 0}
+  onClose={() => setShowWithdrawalModal(false)}
+  onSuccess={async () => {
+    // Refresh wallet data after successful withdrawal
+    const updated = await getWallet(token);
+    setWalletData(updated);
+  }}
+/>
+```
+
+
+#### WithdrawalHistory Component
+
+**File**: `src/components/WithdrawalHistory/WithdrawalHistory.jsx`
+
+**Props**:
+```javascript
+{
+  withdrawals: Array<{
+    id: number,
+    amount: number,
+    upiId: string,
+    status: 'PENDING' | 'COMPLETED' | 'FAILED',
+    createdAt: string
+  }>,
+  loading: boolean
+}
+```
+
+**Layout** (desktop table):
+```
+┌──────────────────────────────────────────────────────────────┐
+│  Withdrawal History                                          │
+│                                                              │
+│  AMOUNT    UPI ID           STATUS      DATE                 │
+│  ──────────────────────────────────────────────────────────  │
+│  ₹10,000   john@paytm       COMPLETED   15 Mar 2026         │
+│  ₹5,000    john@paytm       PENDING     10 Mar 2026         │
+└──────────────────────────────────────────────────────────────┘
+```
+
+**Layout** (mobile cards):
+```
+┌──────────────────────────────────────┐
+│  ₹10,000                             │
+│  john@paytm                          │
+│  COMPLETED • 15 Mar 2026             │
+└──────────────────────────────────────┘
+```
+
+
+**Component structure**:
+```jsx
+const WithdrawalHistory = ({ withdrawals, loading }) => {
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString('en-IN', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  const getStatusStyle = (status) => {
+    const styles = {
+      PENDING: 'bg-amber-50 text-amber-700',
+      COMPLETED: 'bg-emerald-50 text-emerald-700',
+      FAILED: 'bg-red-50 text-red-700'
+    };
+    return styles[status] || 'bg-slate-50 text-slate-700';
+  };
+
+  if (loading) {
+    return (
+      <div className="animate-pulse space-y-3">
+        <div className="h-12 bg-slate-200 rounded"></div>
+        <div className="h-12 bg-slate-200 rounded"></div>
+      </div>
+    );
+  }
+
+  if (withdrawals.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <ArrowUpCircle className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+        <p className="text-slate-500">No withdrawal requests yet</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden">
+      {/* Desktop table */}
+      <div className="hidden md:block">
+        <table className="w-full">
+          <thead className="bg-slate-50">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-bold uppercase 
+                             tracking-widest text-slate-400">
+                Amount
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-bold uppercase 
+                             tracking-widest text-slate-400">
+                UPI ID
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-bold uppercase 
+                             tracking-widest text-slate-400">
+                Status
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-bold uppercase 
+                             tracking-widest text-slate-400">
+                Date
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {withdrawals.map((withdrawal) => (
+              <tr
+                key={withdrawal.id}
+                className="border-t border-slate-100 hover:bg-slate-50 
+                           transition-colors"
+              >
+                <td className="px-6 py-4 font-semibold text-slate-900">
+                  ₹{withdrawal.amount.toLocaleString('en-IN')}
+                </td>
+                <td className="px-6 py-4 text-slate-600 font-mono text-sm">
+                  {withdrawal.upiId}
+                </td>
+                <td className="px-6 py-4">
+                  <span className={`px-3 py-1 rounded-full text-xs font-bold 
+                                   ${getStatusStyle(withdrawal.status)}`}>
+                    {withdrawal.status}
+                  </span>
+                </td>
+                <td className="px-6 py-4 text-slate-600">
+                  {formatDate(withdrawal.createdAt)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Mobile cards */}
+      <div className="md:hidden divide-y divide-slate-100">
+        {withdrawals.map((withdrawal) => (
+          <div key={withdrawal.id} className="p-4">
+            <div className="flex items-start justify-between mb-2">
+              <p className="text-lg font-bold text-slate-900">
+                ₹{withdrawal.amount.toLocaleString('en-IN')}
+              </p>
+              <span className={`px-3 py-1 rounded-full text-xs font-bold 
+                               ${getStatusStyle(withdrawal.status)}`}>
+                {withdrawal.status}
+              </span>
+            </div>
+            <p className="text-sm text-slate-600 font-mono mb-1">
+              {withdrawal.upiId}
+            </p>
+            <p className="text-xs text-slate-500">
+              {formatDate(withdrawal.createdAt)}
+            </p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+```
+
+
+#### Integration with ProfilePage
+
+**File**: `src/pages/ProfilePage.jsx`
+
+**Updated state**:
+```javascript
+const [withdrawals, setWithdrawals] = useState([]);
+```
+
+**Data fetching** (add to existing useEffect):
+```javascript
+useEffect(() => {
+  if (!isAuthenticated || !token) return;
+  
+  const fetchProfileData = async () => {
+    setLoading(true);
+    try {
+      const [walletData, referralData, withdrawalHistory] = await Promise.all([
+        getWallet(token),
+        getReferralData(token),
+        getWithdrawalHistory(token)
+      ]);
+      
+      setWalletData(walletData);
+      setTransactions(walletData.transactions || []);
+      setReferralData(referralData);
+      setWithdrawals(withdrawalHistory);
+    } catch (err) {
+      showToast('Failed to load profile data', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  fetchProfileData();
+}, [isAuthenticated, token]);
+```
+
+**Render WithdrawalHistory** (add after Transaction History section):
+```jsx
+{/* Withdrawal History Section */}
+<section>
+  <h2 className="text-2xl font-bold text-slate-900 mb-6">
+    Withdrawal History
+  </h2>
+  <WithdrawalHistory withdrawals={withdrawals} loading={loading} />
+</section>
+```
+
+
+---
+
+### New Correctness Properties (Requirements 57–60)
+
+#### Property Reflection
+
+After analyzing all acceptance criteria for requirements 57-60, I identified the following patterns:
+
+1. **Modal Display Consolidation**: Requirements 57.1, 57.8, 60.2 all specify modal display behavior. These can be consolidated into properties about modal triggering.
+
+2. **Empty State Consolidation**: Requirements 58.1, 58.2, 58.3 all specify the no-transactions empty state. These can be consolidated into a single property about empty state rendering.
+
+3. **Button State Consolidation**: Requirements 60.1 and 60.12 both specify when the withdraw button should be enabled/disabled. These can be consolidated into a single property.
+
+The following properties represent the unique, non-redundant testable behaviors:
+
+
+**Property 42: Confirmation Modal Trigger**
+
+*For any* category or offer click on the merchant detail page when the user is authenticated, the confirmation modal SHALL be displayed before any transaction is created or URL is opened.
+
+**Validates: Requirements 57.1, 57.8**
+
+---
+
+**Property 43: Confirmation Modal Content**
+
+*For any* merchant name, the confirmation modal message SHALL include the merchant name in both the message text and the confirmation button text.
+
+**Validates: Requirements 57.2, 57.3**
+
+---
+
+**Property 44: Confirmation Modal Action Flow**
+
+*For any* confirmed action in the confirmation modal, the application SHALL create a transaction AND open the merchant URL. For any canceled action (modal closed without confirming), the application SHALL NOT create a transaction or open a URL.
+
+**Validates: Requirements 57.4, 57.6**
+
+---
+
+**Property 45: Empty Transaction State Rendering**
+
+*For any* authenticated user with zero transactions, the transaction list SHALL display an empty state with a shopping bag icon, the message "Start shopping to earn cashback!", and a "Browse Merchants" button.
+
+**Validates: Requirements 58.1, 58.2, 58.3**
+
+---
+
+**Property 46: Conditional Offers Section**
+
+*For any* merchant with an empty or null offers array, the "Today's Best Deals" section SHALL NOT be rendered on the merchant detail page.
+
+**Validates: Requirements 58.6**
+
+---
+
+
+**Property 47: Referral Code Display**
+
+*For any* authenticated user on the profile page, the referral code fetched from the API SHALL be displayed in the referral card.
+
+**Validates: Requirements 59.1, 59.2**
+
+---
+
+**Property 48: Referral Link Format**
+
+*For any* referral code, the generated referral link SHALL follow the format `https://payback.app/ref/[Referral_Code]`.
+
+**Validates: Requirements 59.4**
+
+---
+
+**Property 49: Referral Link Copy Action**
+
+*For any* click on the "Copy Referral Link" button, the referral link SHALL be copied to the clipboard using `navigator.clipboard.writeText`, and a toast notification "Referral link copied!" SHALL be displayed.
+
+**Validates: Requirements 59.3, 59.5**
+
+---
+
+**Property 50: Referral Stats Display**
+
+*For any* referral data fetched from the API, both "Friends Joined" count and "Bonus Earned" amount SHALL be displayed in the referral stats section.
+
+**Validates: Requirements 59.7, 59.8**
+
+---
+
+**Property 51: Withdraw Button Visibility**
+
+*For any* wallet state, the "Withdraw" button SHALL be displayed when `available > 0` and SHALL be disabled when `available <= 0` or when a withdrawal is in progress.
+
+**Validates: Requirements 60.1, 60.12**
+
+---
+
+
+**Property 52: Withdrawal Modal Display**
+
+*For any* click on the "Withdraw" button, the withdrawal modal SHALL be displayed with the available balance prominently shown.
+
+**Validates: Requirements 60.2, 60.4**
+
+---
+
+**Property 53: UPI ID Validation**
+
+*For any* UPI ID input, the validation SHALL accept strings matching the pattern `alphanumeric@alphanumeric` and SHALL reject all other formats, displaying an appropriate error message.
+
+**Validates: Requirements 60.5**
+
+---
+
+**Property 54: Withdrawal Request Submission**
+
+*For any* valid withdrawal request (valid UPI ID and available balance > 0), clicking submit SHALL call the `createWithdrawal` API with the UPI ID and available balance amount.
+
+**Validates: Requirements 60.6**
+
+---
+
+**Property 55: Withdrawal Success Feedback**
+
+*For any* successful withdrawal request, the application SHALL display a toast notification "Withdrawal request submitted! You'll receive payment within 24-48 hours" and SHALL close the modal.
+
+**Validates: Requirements 60.7**
+
+---
+
+**Property 56: Withdrawal Error Handling**
+
+*For any* failed withdrawal request, the application SHALL display an error message from the API response in the modal without closing it.
+
+**Validates: Requirements 60.8**
+
+---
+
+**Property 57: Withdrawal History Display**
+
+*For any* withdrawal history entry, the display SHALL include the amount, UPI ID, status (PENDING/COMPLETED/FAILED), and date.
+
+**Validates: Requirements 60.10**
+
+
+---
+
+### Updated Component Structure (Post-Requirements 57–60)
+
+```
+src/components/
+  ConfirmationModal/
+    ConfirmationModal.jsx        # New - order confirmation before redirect
+    ConfirmationModal.module.css
+    index.js
+  ReferralCard/
+    ReferralCard.jsx              # New - referral code and sharing
+    index.js
+  WithdrawalModal/
+    WithdrawalModal.jsx           # New - withdrawal request form
+    index.js
+  WithdrawalHistory/
+    WithdrawalHistory.jsx         # New - withdrawal history table
+    index.js
+  TransactionList/
+    TransactionList.jsx           # Updated - enhanced empty state
+    TransactionList.module.css
+    index.js
+  WalletCard/
+    WalletCard.jsx                # Updated - added withdraw button
+    WalletCard.module.css
+    index.js
+
+src/services/
+  api.js                          # Updated - added withdrawal and referral endpoints
+
+src/pages/
+  ProfilePage.jsx                 # Updated - added referral card and withdrawal history
+  MerchantDetailPage.jsx          # Updated - added confirmation modal
+```
+
+
+### Updated Component Hierarchy (Post-Requirements 57–60)
+
+```
+main.jsx
+└── BrowserRouter
+    └── Routes
+        ├── Route "/"
+        │   └── App (homepage)
+        │       ├── Header
+        │       ├── HeroSection
+        │       ├── WalletCard (with Withdraw button)
+        │       ├── CategoryPills
+        │       ├── MerchantGrid
+        │       ├── TransactionList (enhanced empty state)
+        │       ├── HowItWorks
+        │       ├── Footer
+        │       ├── MobileBottomNav
+        │       └── WithdrawalModal ← NEW
+        ├── Route "/merchants/:id"
+        │   └── MerchantDetailPage
+        │       ├── Hero Banner
+        │       ├── CashbackCalculator
+        │       ├── CategoryGrid
+        │       ├── OfferCard[]
+        │       └── ConfirmationModal ← NEW
+        ├── Route "/admin"
+        │   └── AdminPage
+        └── Route "/profile"
+            └── ProfilePage
+                ├── Profile Card
+                ├── Wallet Summary
+                ├── ReferralCard ← NEW
+                ├── Transaction History
+                └── WithdrawalHistory ← NEW
+```
+
+
+### Data Flow Diagrams
+
+#### Order Confirmation Flow
+
+```
+User clicks category/offer on merchant detail page
+  ↓
+Auth check (if not authenticated → show login modal)
+  ↓
+Store pending action { type, data } in state
+  ↓
+Show ConfirmationModal with merchant name
+  ↓
+User clicks "Got it, Take me to [Merchant]"
+  ↓
+Execute pending action:
+  - createTransaction(merchantId, 1000, token)
+  - window.open(affiliateUrl, '_blank')
+  - showToast(success message)
+  - dispatch 'walletUpdated' event
+  ↓
+Clear pending action, close modal
+```
+
+#### Withdrawal Flow
+
+```
+User clicks "Withdraw" button on WalletCard
+  ↓
+Show WithdrawalModal with available balance
+  ↓
+User enters UPI ID
+  ↓
+Client-side validation (alphanumeric@alphanumeric pattern)
+  ↓
+User clicks "Request Withdrawal"
+  ↓
+POST /api/v1/withdrawals { upiId, amount }
+  ↓
+Success:
+  - showToast("Withdrawal request submitted! You'll receive payment within 24-48 hours")
+  - Close modal
+  - Refresh wallet data (getWallet)
+  ↓
+Failure:
+  - Display error message in modal
+  - Keep modal open for retry
+```
+
+
+#### Referral System Flow
+
+```
+User navigates to /profile
+  ↓
+Fetch referral data: GET /api/v1/users/me/referral
+  ↓
+Display ReferralCard with:
+  - referralCode
+  - friendsJoined count
+  - bonusEarned amount
+  ↓
+User clicks "Copy Link"
+  ↓
+navigator.clipboard.writeText(`https://payback.app/ref/${referralCode}`)
+  ↓
+showToast("Referral link copied!")
+  ↓
+User clicks social share button (WhatsApp/Twitter/Facebook)
+  ↓
+window.open(social platform share URL with referral link)
+```
+
+#### Referral Bonus Notification (Polling)
+
+```
+User is authenticated on any page
+  ↓
+Poll GET /api/v1/users/me/referral every 30 seconds
+  ↓
+Compare new bonusEarned with previous value
+  ↓
+If bonusEarned increased:
+  - Calculate bonus amount (new - previous)
+  - showToast(`You earned ₹${bonusAmount} referral bonus!`)
+  - Update referralData state
+```
+
+
+---
+
+### Design Summary (Requirements 57–60)
+
+#### Key Design Decisions
+
+**Order Confirmation Modal (Req 57)**:
+- Uses a pending action pattern to decouple modal display from action execution
+- Modal is reusable for both category and offer clicks
+- Canceling the modal clears the pending action without side effects
+- Confirmation executes the full transaction flow (create transaction → open URL → refresh wallet)
+
+**Empty States (Req 58)**:
+- Transaction empty state includes actionable CTA to browse merchants
+- Unauthenticated wallet state already implemented in Req 37
+- No offers section uses conditional rendering (section not shown when offers array is empty)
+- All empty states follow emerald/slate design system
+
+**Referral System (Req 59)**:
+- Referral data fetched from dedicated endpoint `/api/v1/users/me/referral`
+- Clipboard API used for copy functionality with fallback error handling
+- Social sharing uses platform-specific URL schemes (WhatsApp, Twitter, Facebook)
+- Referral bonus notifications use polling (30-second interval) for MVP
+- Production should consider WebSockets or Server-Sent Events for real-time notifications
+
+**Withdrawal Flow (Req 60)**:
+- Withdraw button conditionally rendered based on available balance
+- UPI ID validation uses regex pattern: `alphanumeric@alphanumeric`
+- Withdrawal amount is always the full available balance (no partial withdrawals in MVP)
+- Withdrawal history displayed on profile page with status badges
+- Modal remains open on error to allow user to correct input and retry
+
+#### API Endpoints Added
+
+```
+POST   /api/v1/withdrawals              # Create withdrawal request
+GET    /api/v1/withdrawals/me           # Get user's withdrawal history
+GET    /api/v1/users/me/referral        # Get referral code and stats
+```
+
+#### Testing Strategy Updates
+
+**Unit Tests** should cover:
+- ConfirmationModal rendering with merchant name
+- WithdrawalModal UPI ID validation (valid and invalid formats)
+- ReferralCard clipboard copy functionality
+- Empty state rendering for zero transactions
+- Withdraw button visibility based on balance
+
+**Property Tests** should cover:
+- Confirmation modal trigger for any category/offer click
+- UPI ID validation for any input string
+- Referral link format for any referral code
+- Withdrawal history display for any withdrawal array
+- Empty state display for any zero-length transaction array
+

@@ -1,11 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Wallet as WalletIcon, Receipt } from 'lucide-react';
-import { getWallet, updateUserProfile } from '../services/api';
+import { Receipt } from 'lucide-react';
+import { getWallet, updateUserProfile, getReferralStats, createWithdrawal, getWithdrawalHistory } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../hooks/useToast';
 import { formatCurrency } from '../utils/formatters';
 import TransactionList from '../components/TransactionList';
+import ReferralCard from '../components/ReferralCard';
+import WithdrawalModal from '../components/WithdrawalModal';
+import WithdrawalHistory from '../components/WithdrawalHistory';
 
 export default function ProfilePage() {
   const { user, token, isAuthenticated, updateUser } = useAuth();
@@ -18,6 +21,11 @@ export default function ProfilePage() {
   const [editMode, setEditMode] = useState(false);
   const [nameInput, setNameInput] = useState('');
   const [updating, setUpdating] = useState(false);
+  const [referralStats, setReferralStats] = useState(null);
+  const [referralLoading, setReferralLoading] = useState(true);
+  const [withdrawalModalOpen, setWithdrawalModalOpen] = useState(false);
+  const [withdrawals, setWithdrawals] = useState([]);
+  const [withdrawalsLoading, setWithdrawalsLoading] = useState(true);
 
   // Auth guard
   useEffect(() => {
@@ -47,6 +55,46 @@ export default function ProfilePage() {
     fetchProfileData();
   }, [isAuthenticated, token, showToast]);
 
+  // Fetch referral stats
+  useEffect(() => {
+    if (!isAuthenticated || !token) return;
+
+    const fetchReferralStats = async () => {
+      setReferralLoading(true);
+      try {
+        const stats = await getReferralStats(token);
+        setReferralStats(stats);
+      } catch (err) {
+        console.error('Failed to load referral stats:', err);
+        // Don't show error toast for referral stats - it's not critical
+      } finally {
+        setReferralLoading(false);
+      }
+    };
+
+    fetchReferralStats();
+  }, [isAuthenticated, token]);
+
+  // Fetch withdrawal history
+  useEffect(() => {
+    if (!isAuthenticated || !token) return;
+
+    const fetchWithdrawals = async () => {
+      setWithdrawalsLoading(true);
+      try {
+        const data = await getWithdrawalHistory(token);
+        setWithdrawals(data || []);
+      } catch (err) {
+        console.error('Failed to load withdrawal history:', err);
+        // Don't show error toast - it's not critical
+      } finally {
+        setWithdrawalsLoading(false);
+      }
+    };
+
+    fetchWithdrawals();
+  }, [isAuthenticated, token]);
+
   const handleSaveName = async () => {
     if (!nameInput.trim()) {
       showToast('Name cannot be empty', 'error');
@@ -63,6 +111,25 @@ export default function ProfilePage() {
       showToast('Failed to update name', 'error');
     } finally {
       setUpdating(false);
+    }
+  };
+
+  const handleWithdrawalSubmit = async (upiId, amount) => {
+    try {
+      await createWithdrawal(upiId, amount, token);
+      showToast('Withdrawal request submitted! You\'ll receive payment within 24-48 hours', 'success');
+      setWithdrawalModalOpen(false);
+      
+      // Refresh wallet data and withdrawal history
+      const [walletResponse, withdrawalsResponse] = await Promise.all([
+        getWallet(token),
+        getWithdrawalHistory(token)
+      ]);
+      setWalletData(walletResponse);
+      setWithdrawals(withdrawalsResponse || []);
+    } catch (err) {
+      showToast(err.message || 'Failed to submit withdrawal request', 'error');
+      throw err; // Re-throw to let modal handle the error state
     }
   };
 
@@ -130,7 +197,16 @@ export default function ProfilePage() {
 
         {/* Wallet Summary */}
         <section className="bg-white rounded-3xl border border-slate-200 shadow-sm p-8">
-          <h2 className="text-2xl font-bold text-slate-900 mb-6">Wallet Summary</h2>
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-bold text-slate-900">Wallet Summary</h2>
+            <button
+              onClick={() => setWithdrawalModalOpen(true)}
+              disabled={loading || !walletData || parseFloat(walletData?.availableBalance || 0) === 0}
+              className="bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-2 rounded-full font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-emerald-500"
+            >
+              Request Withdrawal
+            </button>
+          </div>
 
           {loading ? (
             <div className="animate-pulse space-y-3">
@@ -154,12 +230,20 @@ export default function ProfilePage() {
               <div className="flex flex-col gap-1">
                 <span className="text-slate-500 text-sm">Available for Payout</span>
                 <span className="text-2xl font-bold text-slate-900">
-                  {formatCurrency(parseFloat(walletData?.available) || 0)}
+                  {formatCurrency(parseFloat(walletData?.availableBalance) || 0)}
                 </span>
               </div>
             </div>
           )}
         </section>
+
+        {/* Referral Section */}
+        {!referralLoading && user?.referralCode && (
+          <ReferralCard 
+            referralCode={user.referralCode} 
+            stats={referralStats}
+          />
+        )}
 
         {/* Transaction History */}
         <section className="bg-white rounded-3xl border border-slate-200 shadow-sm p-8">
@@ -186,7 +270,21 @@ export default function ProfilePage() {
             </div>
           )}
         </section>
+
+        {/* Withdrawal History */}
+        <section className="bg-white rounded-3xl border border-slate-200 shadow-sm p-8">
+          <h2 className="text-2xl font-bold text-slate-900 mb-6">Withdrawal History</h2>
+          <WithdrawalHistory withdrawals={withdrawals} loading={withdrawalsLoading} />
+        </section>
       </div>
+
+      {/* Withdrawal Modal */}
+      <WithdrawalModal
+        isOpen={withdrawalModalOpen}
+        availableBalance={parseFloat(walletData?.availableBalance || 0)}
+        onSubmit={handleWithdrawalSubmit}
+        onClose={() => setWithdrawalModalOpen(false)}
+      />
     </div>
   );
 }

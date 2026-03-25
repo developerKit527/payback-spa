@@ -2,6 +2,8 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import { formatCurrency } from '../../utils/formatters';
 import styles from './TransactionList.module.css';
+import EmptyState from '../EmptyState';
+import { ShoppingBag } from 'lucide-react';
 
 const TransactionList = ({ transactions = [], loading = false }) => {
   const formatDate = (dateString) => {
@@ -42,11 +44,24 @@ const TransactionList = ({ transactions = [], loading = false }) => {
   }
 
   if (!transactions || transactions.length === 0) {
+    const handleBrowseMerchants = () => {
+      const merchantGrid = document.getElementById('merchant-grid');
+      if (merchantGrid) {
+        merchantGrid.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    };
+
     return (
       <div className={styles.container}>
         <h2 className="text-2xl font-bold text-gray-900 mb-6">Transaction History</h2>
-        <div className="bg-white rounded-lg p-8 text-center">
-          <p className="text-gray-500">No transactions yet</p>
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm">
+          <EmptyState
+            icon={ShoppingBag}
+            title="No transactions yet"
+            message="Start shopping to earn cashback!"
+            actionText="Browse Merchants"
+            onAction={handleBrowseMerchants}
+          />
         </div>
       </div>
     );

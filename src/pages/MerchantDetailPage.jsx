@@ -11,6 +11,7 @@ import CategoryGrid from '../components/CategoryGrid';
 import OfferCard from '../components/OfferCard';
 import LoginModal from '../components/AuthModal/LoginModal';
 import RegisterModal from '../components/AuthModal/RegisterModal';
+import ConfirmationModal from '../components/ConfirmationModal';
 
 // ─── Skeleton ────────────────────────────────────────────────────────────────
 function DetailSkeleton() {
@@ -102,6 +103,8 @@ export default function MerchantDetailPage() {
   const [wallet, setWallet] = useState(null);
   const [isActivating, setIsActivating] = useState(false);
   const [calculatorAmount, setCalculatorAmount] = useState('');
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [pendingAction, setPendingAction] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -133,18 +136,9 @@ export default function MerchantDetailPage() {
       setAuthModal('login');
       return;
     }
-    setIsActivating(true);
-    try {
-      const tx = await createTransaction(merchant.id, 1000, token);
-      const cashback = tx?.cashbackAmount ?? (1000 * (merchant.cashbackRate / 100));
-      window.open(category.affiliateUrl, '_blank');
-      showToast(`Cashback activated! Shop and earn ${formatCurrency(cashback)}`, 'success');
-      window.dispatchEvent(new Event('walletUpdated'));
-    } catch (err) {
-      showToast(err.message || 'Could not activate cashback', 'error');
-    } finally {
-      setIsActivating(false);
-    }
+    // Store the pending action and show confirmation modal
+    setPendingAction({ type: 'category', data: category });
+    setShowConfirmation(true);
   };
 
   const handleOfferActivate = async (offer) => {
@@ -153,17 +147,43 @@ export default function MerchantDetailPage() {
       setAuthModal('login');
       return;
     }
+    // Store the pending action and show confirmation modal
+    setPendingAction({ type: 'offer', data: offer });
+    setShowConfirmation(true);
+  };
+
+  const handleConfirmAction = async () => {
+    if (!pendingAction) return;
+    
+    setShowConfirmation(false);
     setIsActivating(true);
+
     try {
-      await createTransaction(merchant.id, 1000, token);
-      window.open(offer.affiliateUrl, '_blank');
-      showToast('Deal activated! Cashback tracking started', 'success');
-      window.dispatchEvent(new Event('walletUpdated'));
+      if (pendingAction.type === 'category') {
+        const category = pendingAction.data;
+        const tx = await createTransaction(merchant.id, 1000, token);
+        const cashback = tx?.cashbackAmount ?? (1000 * (merchant.cashbackRate / 100));
+        window.open(category.affiliateUrl, '_blank');
+        showToast(`Cashback activated! Shop and earn ${formatCurrency(cashback)}`, 'success');
+        window.dispatchEvent(new Event('walletUpdated'));
+      } else if (pendingAction.type === 'offer') {
+        const offer = pendingAction.data;
+        await createTransaction(merchant.id, 1000, token);
+        window.open(offer.affiliateUrl, '_blank');
+        showToast('Deal activated! Cashback tracking started', 'success');
+        window.dispatchEvent(new Event('walletUpdated'));
+      }
     } catch (err) {
-      showToast(err.message || 'Could not activate deal', 'error');
+      showToast(err.message || 'Could not activate cashback', 'error');
     } finally {
       setIsActivating(false);
+      setPendingAction(null);
     }
+  };
+
+  const handleCloseConfirmation = () => {
+    setShowConfirmation(false);
+    setPendingAction(null);
   };
 
   const handleCalculatorActivate = async () => {
@@ -226,6 +246,14 @@ export default function MerchantDetailPage() {
           onSwitchToLogin={() => setAuthModal('login')}
         />
       )}
+
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showConfirmation}
+        merchantName={merchant.name}
+        onConfirm={handleConfirmAction}
+        onClose={handleCloseConfirmation}
+      />
 
       {/* Minimal top nav */}
       <nav className="bg-white border-b border-slate-200 px-6 py-4 flex items-center gap-4 sticky top-0 z-30">

@@ -828,3 +828,96 @@ The Payback SPA Frontend is a modern React-based single-page application that pr
 - **Profile_Page**: The page at /profile showing user account details and transaction history
 - **Display_Name**: The user's customizable name shown in the UI (can differ from registered name)
 - **Wallet_Summary**: The aggregated view of total earned, pending, and available balances
+
+
+---
+
+## Requirements: Order Confirmation, Empty States, Referral System, Withdrawal Flow (REQ-057–060)
+
+### Requirement 57: Order Confirmation Flow
+
+**User Story:** As a user, I want to see a confirmation modal before being redirected to a merchant, so that I understand how cashback tracking works and can make an informed decision.
+
+#### Acceptance Criteria
+
+1. WHEN a user clicks a category or offer on the merchant detail page, THE Frontend SHALL display a Confirmation_Modal before redirecting
+2. THE Confirmation_Modal SHALL display the message "You're about to shop at [Merchant Name]. Make sure to complete your purchase for cashback to be tracked."
+3. THE Confirmation_Modal SHALL display a primary button with text "Got it, Take me to [Merchant Name] →"
+4. WHEN the user clicks the confirmation button, THE Frontend SHALL create the transaction and open the merchant URL in a new tab
+5. THE Confirmation_Modal SHALL have a close button (X) allowing users to cancel the action
+6. WHEN the user closes the modal without confirming, THE Frontend SHALL NOT create a transaction or open the merchant URL
+7. THE Confirmation_Modal SHALL use the existing emerald/slate design system
+8. THE Confirmation_Modal SHALL be displayed for both category clicks and offer clicks
+
+#### Glossary Terms
+
+- **Confirmation_Modal**: The modal dialog shown before redirecting users to merchant websites
+- **Merchant Name**: The name of the merchant the user is about to visit
+
+### Requirement 58: Empty States Polish
+
+**User Story:** As a user, I want helpful messages when there's no data to display, so that I understand what to do next.
+
+#### Acceptance Criteria
+
+1. WHEN a user has no transactions in their wallet, THE Frontend SHALL display an Empty_State message "Start shopping to earn cashback!" with a call-to-action to browse the merchant grid
+2. THE Empty_State for no transactions SHALL include a visual icon (shopping bag or similar)
+3. THE Empty_State for no transactions SHALL include a button "Browse Merchants" that scrolls to or navigates to the merchant grid
+4. WHEN a user is not authenticated and views the wallet section, THE Frontend SHALL display an Empty_State message with helpful text explaining they need to sign in
+5. THE Empty_State for unauthenticated wallet SHALL include "Sign In" and "Join Now" buttons
+6. WHEN a merchant has no offers on the merchant detail page, THE Frontend SHALL NOT display the "Today's Best Deals" section (already implemented)
+7. ALL Empty_State components SHALL use the existing emerald/slate design system
+8. THE Empty_State messages SHALL be friendly and action-oriented
+
+#### Glossary Terms
+
+- **Empty_State**: A UI component displayed when there is no data to show, providing helpful guidance to users
+
+### Requirement 59: Referral System Frontend Components
+
+**User Story:** As a user, I want to refer friends and earn bonuses, so that I can benefit from sharing Payback with others.
+
+#### Acceptance Criteria
+
+1. THE Frontend SHALL display the user's unique Referral_Code on the Profile_Page
+2. THE Referral_Code SHALL be fetched from the Backend_API as part of the user profile data
+3. THE Frontend SHALL provide a "Copy Referral Link" button that copies the referral URL to the clipboard
+4. THE Referral_Link format SHALL be: `https://payback.app/ref/[Referral_Code]`
+5. WHEN the user clicks "Copy Referral Link", THE Frontend SHALL show a toast notification "Referral link copied!"
+6. THE Frontend SHALL provide social sharing buttons for WhatsApp, Twitter, and Facebook
+7. THE Frontend SHALL display a Referral_Stats section showing: "Friends Joined" count and "Bonus Earned" amount
+8. THE Referral_Stats SHALL be fetched from the Backend_API
+9. WHEN a user receives a referral bonus, THE Frontend SHALL display a toast notification "You earned ₹[amount] referral bonus!"
+10. THE referral section SHALL use the existing emerald/slate design system with appropriate icons
+11. THE Frontend SHALL display referral information in a dedicated card on the Profile_Page
+
+#### Glossary Terms
+
+- **Referral_Code**: A unique code assigned to each user for tracking referrals
+- **Referral_Link**: The shareable URL containing the user's referral code
+- **Referral_Stats**: Statistics showing the user's referral performance (friends joined, bonus earned)
+
+### Requirement 60: Withdrawal Flow Frontend Components
+
+**User Story:** As a user, I want to request withdrawals of my available balance, so that I can receive my earned cashback.
+
+#### Acceptance Criteria
+
+1. THE Frontend SHALL display a "Withdraw" button on the Wallet_Card when the user has an available balance greater than zero
+2. WHEN the user clicks "Withdraw", THE Frontend SHALL display a Withdrawal_Modal
+3. THE Withdrawal_Modal SHALL contain an input field for UPI_ID with placeholder "yourname@upi"
+4. THE Withdrawal_Modal SHALL display the available balance prominently
+5. THE Withdrawal_Modal SHALL validate that the UPI_ID matches the pattern: alphanumeric@alphanumeric
+6. WHEN the user submits a valid withdrawal request, THE Frontend SHALL send the request to the Backend_API
+7. WHEN the withdrawal request succeeds, THE Frontend SHALL show a toast "Withdrawal request submitted! You'll receive payment within 24-48 hours"
+8. WHEN the withdrawal request fails, THE Frontend SHALL display an error message from the Backend_API
+9. THE Frontend SHALL display a Withdrawal_History section on the Profile_Page showing past withdrawal requests
+10. EACH withdrawal history entry SHALL display: amount, UPI ID, status (pending/completed/failed), and date
+11. THE Withdrawal_Modal and history SHALL use the existing emerald/slate design system
+12. THE "Withdraw" button SHALL be disabled when the available balance is zero or when a withdrawal is already in progress
+
+#### Glossary Terms
+
+- **Withdrawal_Modal**: The modal dialog for requesting cashback withdrawals
+- **UPI_ID**: The user's Unified Payments Interface ID for receiving payments
+- **Withdrawal_History**: A list of past withdrawal requests and their statuses

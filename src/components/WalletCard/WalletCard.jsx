@@ -44,9 +44,9 @@ function useCountUp(target, enabled = true) {
 }
 
 function WalletCard({ wallet, loading, error }) {
-  const available = parseFloat(wallet?.available) || 0;
+  const available = parseFloat(wallet?.availableBalance) || 0;
   const totalEarned = parseFloat(wallet?.totalEarned) || 0;
-  const pending = parseFloat(wallet?.pending) || 0;
+  const pending = parseFloat(wallet?.pendingAmount) || 0;
 
   const availableRef = useCountUp(available, !loading && !error);
 
